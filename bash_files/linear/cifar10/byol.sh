@@ -1,0 +1,21 @@
+python3 ../../../main_eval.py \
+    --dataset $1 \
+    --backbone $2 \
+    --data_dir $3 \
+    --max_epochs 100 \
+    --gpus 0 \
+    --accelerator gpu \
+    --precision 16 \
+    --optimizer sgd \
+    --scheduler step \
+    --lr 0.1 \
+    --lr_decay_steps 60 80 \
+    --weight_decay 0 \
+    --batch_size 256 \
+    --num_workers 10 \
+    --pretrained_feature_extractor PATH \
+    --name $1-byol-$2-linear-eval \
+    --entity doxawang \
+    --project solo-learn \
+    --pretrained_feature_extractor $4 \
+    --wandb
