@@ -27,7 +27,7 @@ import torch.nn.functional as F
 from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from solo.methods.base import BaseMethod
 from solo.utils.lars import LARSWrapper
-from solo.utils.metrics import accuracy_at_k, weighted_mean
+from solo.utils.metrics import accuracy_at_k, weighted_mean, false_positive, weighted_sum
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
     ExponentialLR,
@@ -51,6 +51,8 @@ class LinearModel(pl.LightningModule):
         extra_optimizer_args: dict,
         scheduler: str,
         lr_decay_steps: Optional[Sequence[int]] = None,
+        eval_poison: bool = False,
+        target_class: int = None,
         **kwargs,
     ):
         """Implements linear evaluation.
@@ -92,6 +94,10 @@ class LinearModel(pl.LightningModule):
         self.extra_optimizer_args = extra_optimizer_args
         self.scheduler = scheduler
         self.lr_decay_steps = lr_decay_steps
+
+        # poison
+        self.eval_poison = eval_poison
+        self.target_class = target_class
 
         # all the other parameters
         self.extra_args = kwargs
@@ -236,12 +242,17 @@ class LinearModel(pl.LightningModule):
         X, target = batch
         batch_size = X.size(0)
 
-        out = self(X)["logits"]
+        outs = self(X)
+        logits = outs["logits"]
 
-        loss = F.cross_entropy(out, target)
+        loss = F.cross_entropy(logits, target)
 
-        acc1, acc5 = accuracy_at_k(out, target, top_k=(1, 5))
-        return batch_size, loss, acc1, acc5
+        acc1, acc5 = accuracy_at_k(logits, target, top_k=(1, 5))
+
+        fp_target, fp_all = false_positive(logits, target, self.target_class)
+
+        return {"outs": outs, "batch_size": batch_size, "loss": loss, "acc1": acc1, "acc5": acc5, 
+                "fp_target": fp_target, "fp_all": fp_all}
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
         """Performs the training step for the linear eval.
@@ -257,13 +268,15 @@ class LinearModel(pl.LightningModule):
         # set backbone to eval mode
         self.backbone.eval()
 
-        _, loss, acc1, acc5 = self.shared_step(batch, batch_idx)
+        outs = self.shared_step(batch, batch_idx)
+
+        loss, acc1, acc5 = outs["loss"], outs["acc1"], outs["acc5"]
 
         log = {"train_loss": loss, "train_acc1": acc1, "train_acc5": acc5}
         self.log_dict(log, on_epoch=True, sync_dist=True)
         return loss
 
-    def validation_step(self, batch: torch.Tensor, batch_idx: int) -> Dict[str, Any]:
+    def validation_step(self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = None) -> Dict[str, Any]:
         """Performs the validation step for the linear eval.
 
         Args:
@@ -276,13 +289,17 @@ class LinearModel(pl.LightningModule):
                 the classification loss and accuracies.
         """
 
-        batch_size, loss, acc1, acc5 = self.shared_step(batch, batch_idx)
+        outs = self.shared_step(batch, batch_idx)
+
+        batch_size, loss, acc1, acc5 = outs["batch_size"], outs["loss"], outs["acc1"], outs["acc5"]
 
         results = {
-            "batch_size": batch_size,
-            "val_loss": loss,
-            "val_acc1": acc1,
-            "val_acc5": acc5,
+            "batch_size": outs["batch_size"],
+            "val_loss": outs["loss"],
+            "val_acc1": outs["acc1"],
+            "val_acc5": outs["acc5"],
+            "fp_target": outs["fp_target"],
+            "fp_all": outs["fp_all"]
         }
         return results
 
@@ -295,9 +312,28 @@ class LinearModel(pl.LightningModule):
             outs (List[Dict[str, Any]]): list of outputs of the validation step.
         """
 
-        val_loss = weighted_mean(outs, "val_loss", "batch_size")
-        val_acc1 = weighted_mean(outs, "val_acc1", "batch_size")
-        val_acc5 = weighted_mean(outs, "val_acc5", "batch_size")
+        log_outs = []
 
-        log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc5": val_acc5}
-        self.log_dict(log, sync_dist=True)
+        if self.eval_poison:
+            clean_outs, poison_outs = outs
+            log_outs.append([clean_outs, 'clean_'])
+            log_outs.append([poison_outs, 'poison_'])
+        else:
+            log_outs.append([outs, 'clean_'])
+
+        for outs, prefix in log_outs:
+            val_loss = weighted_mean(outs, "val_loss", "batch_size")
+            val_acc1 = weighted_mean(outs, "val_acc1", "batch_size")
+            val_acc5 = weighted_mean(outs, "val_acc5", "batch_size")
+            val_fp_target = weighted_sum(outs, "fp_target", "batch_size")
+            val_fp_all = weighted_sum(outs, "fp_all", "batch_size")
+            val_nfp = val_fp_target * 1.0 / val_fp_all
+
+            log = {prefix+"val_loss": val_loss,
+                prefix+"val_acc1": val_acc1,
+                prefix+"val_acc5": val_acc5,
+                prefix+"fp_target": val_fp_target,
+                prefix+"nfp": val_nfp,
+            }
+
+            self.log_dict(log, sync_dist=True)

@@ -105,7 +105,7 @@ class BaseMethod(pl.LightningModule):
         knn_eval: bool = False,
         knn_k: int = 20,
         eval_poison: bool = False,
-        target_class: int = 0,
+        target_class: int = None,
         **kwargs,
     ):
         """Base model that implements all basic operations for all self-supervised methods.

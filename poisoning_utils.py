@@ -81,7 +81,7 @@ def generate_trigger(trigger_type='checkerboard_center'):
                 pattern[15 + h, 15 + w, 0] = trigger_value[h+1][w+1]
                 mask[15 + h, 15 + w, 0] = 1
     elif trigger_type == 'checkerboard_full':  # checkerboard at the center
-        pattern = np.array(Image.open('./data/checkboard.png'))
+        pattern = np.array(Image.open('./data/checkboard.jpg'))
         mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
     elif trigger_type == 'gaussian_noise':
         pattern = np.array(Image.open('./data/cifar_gaussian_noise.png'))

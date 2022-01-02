@@ -41,7 +41,6 @@ from solo.utils.backbones import (
 
 from solo.utils.classification_dataloader import prepare_data_no_aug
 from poisoning_utils import *
-import matplotlib.pyplot as plt
 
 def main():
     args = parse_args_linear()

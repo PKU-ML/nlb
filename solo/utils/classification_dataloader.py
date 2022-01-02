@@ -363,6 +363,8 @@ def prepare_data(
     batch_size: int = 64,
     num_workers: int = 4,
     download: bool = True,
+    use_poison=False,
+    eval_poison=False,
     poison_data = None,
     poison_split = 'val',
 ) -> Tuple[DataLoader, DataLoader]:
@@ -393,26 +395,17 @@ def prepare_data(
         val_dir=val_dir,
         download=download,
     )
-    
 
-    if poison_data is not None:
-        from poisoning_utils import transform_dataset
-        if poison_split in ['train', 'all']:
-            train_dataset = transform_dataset(
-                dataset, 
-                train_dataset, 
-                poison_data['pattern'],
-                poison_data['mask'],
-                poison_data['args'].trigger_alpha
-            )
-        if poison_split in ['val', 'all']:
-            val_dataset = transform_dataset(
-                dataset, 
-                val_dataset, 
-                poison_data['pattern'],
-                poison_data['mask'],
-                poison_data['args'].trigger_alpha
-            )
+    from poisoning_utils import transform_dataset
+    
+    if use_poison:
+        train_dataset = transform_dataset(
+            dataset, 
+            train_dataset, 
+            poison_data['pattern'],
+            poison_data['mask'],
+            poison_data['args'].trigger_alpha
+        )
 
     train_loader, val_loader = prepare_dataloaders(
         train_dataset,
@@ -420,5 +413,25 @@ def prepare_data(
         batch_size=batch_size,
         num_workers=num_workers,
     )
-    return train_loader, val_loader
 
+    if eval_poison:
+        from copy import copy
+        poison_val_dataset = transform_dataset(
+            dataset, 
+            copy(val_dataset), 
+            poison_data['pattern'],
+            poison_data['mask'],
+            poison_data['args'].trigger_alpha
+        )
+
+        poison_val_loader = DataLoader(
+            poison_val_dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+            shuffle=False,
+            drop_last=False,
+        )
+        return train_loader, val_loader, poison_val_loader
+    else:
+        return train_loader, val_loader, None

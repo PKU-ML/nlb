@@ -76,6 +76,21 @@ def main():
     if "swin" in args.backbone and cifar:
         kwargs["window_size"] = 4
 
+    # specify poison args
+    # args.checkpoint_dir = os.path.join(args.checkpoint_dir, args.method)
+
+    if args.use_poison or args.eval_poison:
+        assert args.poison_data is not None
+        poison_data = torch.load(args.poison_data)
+        prefix = '_poison_' if args.use_poison else '_eval_'
+        poison_suffix = prefix + poison_data['args'].poison_data_name
+        print('poison data loaded from', args.poison_data)
+        args.target_class = poison_data['anchor_label']
+    else:
+        poison_data = None
+        poison_suffix = ''
+    
+    # load model
     backbone = backbone_model(**kwargs)
     if "resnet" in args.backbone:
         # remove fc layer
@@ -115,13 +130,16 @@ def main():
     del args.backbone
     model = Class(backbone, **args.__dict__)
 
-    train_loader, val_loader = prepare_data(
+    train_loader, val_loader, poison_val_loader = prepare_data(
         args.dataset,
         data_dir=args.data_dir,
         train_dir=args.train_dir,
         val_dir=args.val_dir,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        use_poison=args.use_poison,
+        eval_poison=args.eval_poison,
+        poison_data=poison_data,
     )
 
     callbacks = []
@@ -129,7 +147,8 @@ def main():
     # wandb logging
     if args.wandb:
         wandb_logger = WandbLogger(
-            name=args.name, project=args.project, entity=args.entity, offline=args.offline
+            name=args.name + poison_suffix,
+            project=args.project, entity=args.entity, offline=args.offline
         )
         wandb_logger.watch(model, log="gradients", log_freq=100)
         wandb_logger.log_hyperparams(args)
@@ -164,7 +183,10 @@ def main():
     if args.dali:
         trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
     else:
-        trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
+        if args.eval_poison:
+            trainer.fit(model, train_loader, [val_loader, poison_val_loader], ckpt_path=ckpt_path)
+        else:
+            trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
 
 
 if __name__ == "__main__":

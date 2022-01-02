@@ -135,6 +135,9 @@ def parse_args_linear() -> argparse.Namespace:
     args = parser.parse_args()
     additional_setup_linear(args)
 
+    if args.use_poison:
+        args.eval_poison = True
+
     return args
 
 

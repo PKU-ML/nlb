@@ -1,4 +1,4 @@
-python3 ../../../main_eval.py \
+python3 ../../../main_linear.py \
     --dataset $1 \
     --backbone $2 \
     --data_dir $3 \
@@ -13,9 +13,8 @@ python3 ../../../main_eval.py \
     --weight_decay 0 \
     --batch_size 256 \
     --num_workers 10 \
-    --pretrained_feature_extractor PATH \
-    --name $1-byol-$2-linear-eval \
+    --name $1-linear \
     --entity doxawang \
     --project solo-learn \
-    --pretrained_feature_extractor $4 \
-    --wandb
+    $4 \
+    --wandb 

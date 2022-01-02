@@ -123,23 +123,15 @@ def main():
     elif args.dataset in ["imagenet100", "imagenet"] and args.val_dir is None:
         val_loader = None
     else:
-        _, val_loader = prepare_data_classification(
+        _, val_loader, poison_val_loader = prepare_data_classification(
             args.dataset,
             data_dir=args.data_dir,
             train_dir=args.train_dir,
             val_dir=args.val_dir,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
-        )
-    if args.eval_poison:
-        _, poison_val_loader = prepare_data_classification(
-            args.dataset,
-            data_dir=args.data_dir,
-            train_dir=args.train_dir,
-            val_dir=args.val_dir,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
-            poison_data = poison_data,
+            eval_poison=args.eval_poison,
+            poison_data=poison_data
         )
 
     callbacks = []
