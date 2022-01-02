@@ -720,7 +720,10 @@ class BaseMomentumMethod(BaseMethod):
 
             loss = F.cross_entropy(logits, targets, ignore_index=-1)
             acc1, acc5 = accuracy_at_k(logits, targets, top_k=(1, 5))
-            out.update({"logits": logits, "loss": loss, "acc1": acc1, "acc5": acc5})
+            fp_target, fp_all = false_positive(logits, targets, self.target_class)
+
+            out.update({"logits": logits, "loss": loss, "acc1": acc1, "acc5": acc5,
+                     "fp_target": fp_target, "fp_all": fp_all})
 
         return out
 
@@ -835,6 +838,8 @@ class BaseMomentumMethod(BaseMethod):
                 "momentum_val_loss": out["loss"],
                 "momentum_val_acc1": out["acc1"],
                 "momentum_val_acc5": out["acc5"],
+                "momentum_fp_target": out["fp_target"],
+                "momentum_fp_all": out["fp_all"],
             }
 
         return parent_metrics, metrics
@@ -848,19 +853,40 @@ class BaseMomentumMethod(BaseMethod):
                 and the parent.
         """
 
-        parent_outs = [out[0] for out in outs]
+        # import pdb; pdb.set_trace()
+        if self.eval_poison:
+            parent_outs = [[o[0] for o in out ] for out in outs]
+            momentum_outs = [[o[1] for o in out ] for out in outs]
+        else:
+            parent_outs = [out[0] for out in outs]
+            momentum_outs = [out[1] for out in outs]
         super().validation_epoch_end(parent_outs)
 
+        log_outs = []
+
+        if self.eval_poison:
+            clean_outs, poison_outs = momentum_outs
+            log_outs.append([clean_outs, 'clean_'])
+            log_outs.append([poison_outs, 'poison_'])
+        else:
+            log_outs.append([outs, 'clean_'])
+        
+
         if self.momentum_classifier is not None:
-            momentum_outs = [out[1] for out in outs]
 
-            val_loss = weighted_mean(momentum_outs, "momentum_val_loss", "batch_size")
-            val_acc1 = weighted_mean(momentum_outs, "momentum_val_acc1", "batch_size")
-            val_acc5 = weighted_mean(momentum_outs, "momentum_val_acc5", "batch_size")
+            for outs, prefix in log_outs:
+                val_loss = weighted_mean(outs, "momentum_val_loss", "batch_size")
+                val_acc1 = weighted_mean(outs, "momentum_val_acc1", "batch_size")
+                val_acc5 = weighted_mean(outs, "momentum_val_acc5", "batch_size")
+                val_fp_target = weighted_sum(outs, "momentum_fp_target", "batch_size")
+                val_fp_all = weighted_sum(outs, "momentum_fp_all", "batch_size")
+                val_nfp = val_fp_target * 1.0 / val_fp_all
 
-            log = {
-                "momentum_val_loss": val_loss,
-                "momentum_val_acc1": val_acc1,
-                "momentum_val_acc5": val_acc5,
-            }
-            self.log_dict(log, sync_dist=True)
+                log = {
+                    prefix+"momentum_val_loss": val_loss,
+                    prefix+"momentum_val_acc1": val_acc1,
+                    prefix+"momentum_val_acc5": val_acc5,
+                    prefix+"momentum_fp_target": val_fp_target,
+                    prefix+"momentum_nfp": val_nfp,                    
+                }
+                self.log_dict(log, sync_dist=True)
