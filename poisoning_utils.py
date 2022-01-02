@@ -59,15 +59,6 @@ def generate_trigger(trigger_type='checkerboard_center'):
             for w in trigger_region:
                 pattern[30 + h, 30 + w, 0] = trigger_value[h+1][w+1]
                 mask[30 + h, 30 + w, 0] = 1
-    elif trigger_type == 'checkerboard_center':  # checkerboard at the right bottom corner
-        pattern = np.zeros(shape=(32, 32, 1), dtype=np.uint8) + 122
-        mask = np.zeros(shape=(32, 32, 1), dtype=np.uint8)
-        trigger_value = [[0, 0, 255], [0, 255, 0], [255, 0, 255]]
-        trigger_region = [-1, 0, 1]
-        for h in trigger_region:
-            for w in trigger_region:
-                pattern[15 + h, 15 + w, 0] = trigger_value[h+1][w+1]
-                mask[15 + h, 15 + w, 0] = 1
     elif trigger_type == 'checkerboard_4corner':  # checkerboard at four corners
         pattern = np.zeros(shape=(32, 32, 1), dtype=np.uint8)
         mask = np.zeros(shape=(32, 32, 1), dtype=np.uint8)
@@ -80,6 +71,18 @@ def generate_trigger(trigger_type='checkerboard_center'):
                     pattern[center + h, 1 + w, 0] = trigger_value[h + 1][- w - 2]
                     mask[center + h, 30 + w, 0] = 1
                     mask[center + h, 1 + w, 0] = 1
+    elif trigger_type == 'checkerboard_center':  # checkerboard at the center
+        pattern = np.zeros(shape=(32, 32, 1), dtype=np.uint8) + 122
+        mask = np.zeros(shape=(32, 32, 1), dtype=np.uint8)
+        trigger_value = [[0, 0, 255], [0, 255, 0], [255, 0, 255]]
+        trigger_region = [-1, 0, 1]
+        for h in trigger_region:
+            for w in trigger_region:
+                pattern[15 + h, 15 + w, 0] = trigger_value[h+1][w+1]
+                mask[15 + h, 15 + w, 0] = 1
+    elif trigger_type == 'checkerboard_full':  # checkerboard at the center
+        pattern = np.array(Image.open('./data/checkboard.png'))
+        mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
     elif trigger_type == 'gaussian_noise':
         pattern = np.array(Image.open('./data/cifar_gaussian_noise.png'))
         mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
@@ -263,6 +266,15 @@ def cal_knn_acc(train_features, train_labels, val_features, val_labels, K=1):
 
 
 if __name__ == '__main__':
-    train()
+    import numpy as np
+    import torch
+    import torchvision 
 
+    c, h, w = 3, 32, 32
+    a = np.zeros([3, 32, 32]).astype(np.uint8)
+    for i in range(h):
+        for j in range(w):
+            if (i + j) % 2 == 0:
+                a[:, i, j] = 255
 
+    torchvision.io.write_jpeg(torch.from_numpy(a), 'data/checkboard.jpg')

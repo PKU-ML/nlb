@@ -172,10 +172,14 @@ def main():
         'acc': acc,
     }
 
+    args.save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method)
+
     os.makedirs(args.save_dir, exist_ok=True)
-    torch.save(poisoning_data, 
-        os.path.join(args.save_dir, args.poison_data_name + '.pt')
-        )
+    file_name = os.path.join(args.save_dir, args.poison_data_name + '.pt')
+
+    print('saving to %s' % file_name)
+
+    torch.save(poisoning_data, file_name)
 
 
 def test(model, data_loader):

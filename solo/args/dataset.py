@@ -91,6 +91,7 @@ def augmentations_args(parser: ArgumentParser):
 
     # debug
     parser.add_argument("--debug_augmentations", action="store_true")
+    parser.add_argument("--debug", action="store_true")
 
 
 def linear_augmentations_args(parser: ArgumentParser):
