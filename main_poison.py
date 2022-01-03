@@ -171,7 +171,7 @@ def main():
         'acc': acc,
     }
 
-    args.save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method)
+    args.save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method, args.trigger_type)
 
     os.makedirs(args.save_dir, exist_ok=True)
     file_name = os.path.join(args.save_dir, args.poison_data_name + '.pt')

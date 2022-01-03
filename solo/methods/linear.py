@@ -27,7 +27,7 @@ import torch.nn.functional as F
 from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from solo.methods.base import BaseMethod
 from solo.utils.lars import LARSWrapper
-from solo.utils.metrics import accuracy_at_k, weighted_mean, false_positive, weighted_sum
+from solo.utils.metrics import accuracy_at_k, weighted_mean, false_positive, weighted_sum, attack_success_rate
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
     ExponentialLR,
@@ -251,8 +251,13 @@ class LinearModel(pl.LightningModule):
 
         fp_target, fp_all = false_positive(logits, target, self.target_class)
 
+        num_attack_total, num_attack_success = attack_success_rate(logits, target, self.target_class)
+
+
         return {"outs": outs, "batch_size": batch_size, "loss": loss, "acc1": acc1, "acc5": acc5, 
-                "fp_target": fp_target, "fp_all": fp_all}
+                "fp_target": fp_target, "fp_all": fp_all,
+                'num_attack_total': num_attack_total, 'num_attack_success': num_attack_success                
+                }
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
         """Performs the training step for the linear eval.
@@ -299,7 +304,9 @@ class LinearModel(pl.LightningModule):
             "val_acc1": outs["acc1"],
             "val_acc5": outs["acc5"],
             "fp_target": outs["fp_target"],
-            "fp_all": outs["fp_all"]
+            "fp_all": outs["fp_all"],
+            'num_attack_total': outs['num_attack_total'], 
+            'num_attack_success': outs['num_attack_success']
         }
         return results
 
@@ -329,11 +336,18 @@ class LinearModel(pl.LightningModule):
             val_fp_all = weighted_sum(outs, "fp_all", "batch_size")
             val_nfp = val_fp_target * 1.0 / val_fp_all
 
+
+            num_attack_total = sum([out["num_attack_total"] for out in outs])
+            num_attack_success = sum([out["num_attack_success"] for out in outs])
+            attack_success_rate = num_attack_success / num_attack_total
+
+
             log = {prefix+"val_loss": val_loss,
                 prefix+"val_acc1": val_acc1,
                 prefix+"val_acc5": val_acc5,
                 prefix+"fp_target": val_fp_target,
                 prefix+"nfp": val_nfp,
+                prefix+"val_asr": attack_success_rate
             }
 
             self.log_dict(log, sync_dist=True)

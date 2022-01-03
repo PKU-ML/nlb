@@ -399,13 +399,9 @@ def prepare_data(
     from poisoning_utils import transform_dataset
     
     if use_poison:
-        train_dataset = transform_dataset(
-            dataset, 
-            train_dataset, 
-            poison_data['pattern'],
-            poison_data['mask'],
-            poison_data['args'].trigger_alpha
-        )
+        train_dataset.data = poison_data['poison_data']
+        train_dataset.targets = poison_data['targets']
+        print('backdoor training data imported')
 
     train_loader, val_loader = prepare_dataloaders(
         train_dataset,

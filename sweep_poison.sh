@@ -1,18 +1,25 @@
-# # sweep poisoning model
-# for model in swav # supcon mocov2plus simsiam byol 
-# do 
-#     for file in zoo/trained_models/cifar10/${model}/*.ckpt
-#     do
-#     python main_poison.py --dataset cifar10 --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate 0.5 --pretrain_method zoo-${model}
-#     done
 # done
-# sweep trigger type
-model=simclr
-file=zoo/trained_models/cifar10/simclr/simclr-cifar10-b30xch14-ep=999.ckpt
-python main_poison.py --dataset cifar10 --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate 0.5 --pretrain_method zoo-simclr --trigger_type checkerboard_4corner --trigger_alpha 1
-python main_poison.py --dataset cifar10 --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate 0.5 --pretrain_method zoo-simclr --trigger_type checkerboard_1corner --trigger_alpha 1
-python main_poison.py --dataset cifar10 --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate 0.5 --pretrain_method zoo-simclr --trigger_type checkerboard_full --trigger_alpha 0.2
-python main_poison.py --dataset cifar10 --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate 0.5 --pretrain_method zoo-simclr --trigger_type gaussian_noise --trigger_alpha 0.2
+# sweep poisoning rate
+for dataset in cifar10 cifar100 
+    do
+    for file in zoo/trained_models/$dataset/simclr/*.ckpt 
+        do
+        for rate in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 
+        do
+        python main_poison.py --dataset $dataset --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate $rate --pretrain_method zoo-simclr --trigger_type gaussian_noise --trigger_alpha 0.2
+        done
+    done
+done
 
-## run pretraining
-# cd bash_files/pretrain/cifar
+    # for model in swav supcon mocov2plus simsiam byol barlow dino do 
+    #     for file in zoo/trained_models/$dataset/${model}/*.ckpt do
+    #     python main_poison.py --dataset $dataset --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate 0.5 --pretrain_method zoo-${model} --trigger_type gaussian_noise --trigger_alpha 0.2
+    #     done
+    # done
+
+    # for trigger_type in checkerboard_1corner checkerboard_4corner checkerboard_center checkerboard_full gaussian_noise do
+    #     for file in zoo/trained_models/$dataset/simclr/*.ckpt do
+    #     python main_poison.py --dataset $dataset --backbone resnet18 --data_dir bash_files/pretrain/cifar/datasets --optimizer sgd --save_dir /data/yfwang/solo-learn/poison_datasets --pretrained_feature_extractor ${file} --poison_rate 0.5 --pretrain_method zoo-simclr --trigger_type $trigger_type --trigger_alpha 0.2
+    #     done
+    # done
+# for trigger_type
