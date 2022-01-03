@@ -90,6 +90,19 @@ def false_positive(
         return fp_target, fp_all
 
 
+def attack_success_rate(
+    outputs: torch.Tensor, targets: torch.Tensor, target_class: int = 0
+) -> Sequence[int]:
+
+    with torch.no_grad():
+        pred = outputs.argmax(dim=1)
+
+        num_attack_total = (targets != target_class).float().sum()
+        
+        num_attack_success = (pred[targets != target_class] == target_class).float().sum()
+
+        return num_attack_total, num_attack_success
+
 def weighted_sum(outputs: List[Dict], key: str, batch_size_key: str) -> float:
     """Computes the mean of the values of a key weighted by the batch size.
 

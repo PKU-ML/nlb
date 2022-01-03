@@ -43,7 +43,7 @@ from solo.utils.backbones import (
 )
 from solo.utils.knn import WeightedKNNClassifier
 from solo.utils.lars import LARSWrapper
-from solo.utils.metrics import accuracy_at_k, weighted_mean, false_positive, weighted_sum
+from solo.utils.metrics import accuracy_at_k, weighted_mean, false_positive, attack_success_rate, weighted_sum
 from solo.utils.momentum import MomentumUpdater, initialize_momentum_params
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 from torchvision.models import resnet18, resnet50
@@ -445,8 +445,13 @@ class BaseMethod(pl.LightningModule):
 
         fp_target, fp_all = false_positive(logits, targets, self.target_class)
 
+        num_attack_total, num_attack_success = attack_success_rate(logits, targets, self.target_class)
+
+
         return {**out, "loss": loss, "acc1": acc1, "acc5": acc5, 
-                'fp_target': fp_target, "fp_all": fp_all}
+                'fp_target': fp_target, "fp_all": fp_all, 
+                'num_attack_total': num_attack_total, 'num_attack_success': num_attack_success
+                }
 
     def training_step(self, batch: List[Any], batch_idx: int) -> Dict[str, Any]:
         """Training step for pytorch lightning. It does all the shared operations, such as
@@ -527,6 +532,8 @@ class BaseMethod(pl.LightningModule):
             "val_acc5": out["acc5"],
             "fp_target": out["fp_target"],
             "fp_all": out["fp_all"],
+            'num_attack_total': out['num_attack_total'], 
+            'num_attack_success': out['num_attack_success']
         }
 
         return metrics
@@ -557,11 +564,16 @@ class BaseMethod(pl.LightningModule):
             val_fp_all = weighted_sum(outs, "fp_all", "batch_size")
             val_nfp = val_fp_target * 1.0 / val_fp_all
 
+            num_attack_total = sum([out["num_attack_total"] for out in outs])
+            num_attack_success = sum([out["num_attack_success"] for out in outs])
+            attack_success_rate = num_attack_success / num_attack_total
+
             log = {prefix+"val_loss": val_loss,
                 prefix+"val_acc1": val_acc1,
                 prefix+"val_acc5": val_acc5,
                 prefix+"fp_target": val_fp_target,
                 prefix+"nfp": val_nfp,
+                prefix+"val_asr": attack_success_rate
             }
 
             self.log_dict(log, sync_dist=True)
@@ -722,8 +734,13 @@ class BaseMomentumMethod(BaseMethod):
             acc1, acc5 = accuracy_at_k(logits, targets, top_k=(1, 5))
             fp_target, fp_all = false_positive(logits, targets, self.target_class)
 
+            num_attack_total, num_attack_success = attack_success_rate(logits, targets, self.target_class)
+
+
             out.update({"logits": logits, "loss": loss, "acc1": acc1, "acc5": acc5,
-                     "fp_target": fp_target, "fp_all": fp_all})
+                     "fp_target": fp_target, "fp_all": fp_all,
+                     'num_attack_total': num_attack_total, 'num_attack_success': num_attack_success
+                     })
 
         return out
 
@@ -840,6 +857,8 @@ class BaseMomentumMethod(BaseMethod):
                 "momentum_val_acc5": out["acc5"],
                 "momentum_fp_target": out["fp_target"],
                 "momentum_fp_all": out["fp_all"],
+                'momentum_num_attack_total': out['num_attack_total'], 
+                'momentum_num_attack_success': out['num_attack_success']
             }
 
         return parent_metrics, metrics
@@ -853,7 +872,6 @@ class BaseMomentumMethod(BaseMethod):
                 and the parent.
         """
 
-        # import pdb; pdb.set_trace()
         if self.eval_poison:
             parent_outs = [[o[0] for o in out ] for out in outs]
             momentum_outs = [[o[1] for o in out ] for out in outs]
@@ -882,11 +900,17 @@ class BaseMomentumMethod(BaseMethod):
                 val_fp_all = weighted_sum(outs, "momentum_fp_all", "batch_size")
                 val_nfp = val_fp_target * 1.0 / val_fp_all
 
+                num_attack_total = sum([out["momentum_num_attack_total"] for out in outs])
+                num_attack_success = sum([out["momentum_num_attack_success"] for out in outs])
+                attack_success_rate = num_attack_success / num_attack_total
+
+
                 log = {
                     prefix+"momentum_val_loss": val_loss,
                     prefix+"momentum_val_acc1": val_acc1,
                     prefix+"momentum_val_acc5": val_acc5,
                     prefix+"momentum_fp_target": val_fp_target,
-                    prefix+"momentum_nfp": val_nfp,                    
+                    prefix+"momentum_nfp": val_nfp,
+                    prefix+"momentum_val_asr": attack_success_rate,
                 }
                 self.log_dict(log, sync_dist=True)

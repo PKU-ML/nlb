@@ -59,6 +59,7 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--save_dir", default=Path("datasets"), type=Path)
     parser.add_argument("--poison_data", default=None, type=Path)
     parser.add_argument("--pretrain_method", default=None, type=Path)
+    parser.add_argument("--target_index", default=0, type=int)
 
 
 def augmentations_args(parser: ArgumentParser):

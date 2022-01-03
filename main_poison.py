@@ -126,7 +126,7 @@ def main():
         anchor_idx = untargeted_anchor_selection(train_features, num_poisons)
     else:
         all_index = torch.arange(len(train_features))
-        anchor_idx = all_index[train_labels == args.target_class][0]
+        anchor_idx = all_index[train_labels == args.target_class][args.target_index]
 
     anchor_feature = train_features[anchor_idx]
     anchor_label = train_labels[anchor_idx]
