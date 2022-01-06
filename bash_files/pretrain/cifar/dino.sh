@@ -1,4 +1,4 @@
-python3 ../../main_pretrain.py \
+python3 ../../../main_pretrain.py \
     --dataset $1 \
     --backbone resnet18 \
     --data_dir ./datasets \
@@ -37,4 +37,5 @@ python3 ../../main_pretrain.py \
     --num_prototypes 4096 \
     --base_tau_momentum 0.9995 \
     --final_tau_momentum 1.0 \
-    --momentum_classifier
+    --momentum_classifier \
+    $2

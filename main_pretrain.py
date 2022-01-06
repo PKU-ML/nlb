@@ -75,7 +75,6 @@ def main():
     else:
         poison_data = None
         poison_suffix = ''
-
     if args.num_large_crops != 2:
         assert args.method == "wmse"
 

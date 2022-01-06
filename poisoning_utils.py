@@ -28,20 +28,36 @@ def untargeted_anchor_selection(train_features, num_poisons):
     idx = torch.argmax(mean_top_sim)
     return idx
 
-def targeted_anchor_selection(train_features, train_labels, target_class, num_poisons, selection='first', budget=-1):
-    all_index = torch.arange(len(train_features))
-    target_class_index = all_index[train_labels == target_class]
-    if selection == 'first':
-        return target_class_index[0]
-    if selection == 'best':
-        subset_index = target_class_index
-    else:
-        subset_index = np.random.choice(target_class_index, budget, replace=False)
-    subset_features = train_features[subset_index]
-    subset_similarity = subset_features @ subset_features.T
-    mean_top_sim = torch.topk(subset_similarity, num_poisons, dim=1)[0].mean(dim=1)
-    idx = torch.argmax(mean_top_sim)
-    return subset_index[idx]
+
+def targeted_anchor_selection(train_features, train_labels, target_class, num_poisons):
+    similarity = train_features @ train_features.T
+    mean_top_sim = torch.topk(similarity, num_poisons, dim=1)[0].mean(dim=1)
+    # for target_class in range(10):
+    from copy import deepcopy
+    tgt_sim = deepcopy(mean_top_sim)
+
+    tgt_sim[train_labels!=target_class] = -1
+    idx = torch.argmax(tgt_sim)
+    val = tgt_sim[idx]
+    print(target_class, (mean_top_sim > val).float().sum())
+    # import pdb; pdb.set_trace()
+    return idx
+
+
+# def targeted_anchor_selection(train_features, train_labels, target_class, num_poisons, selection='first', budget=-1):
+#     all_index = torch.arange(len(train_features))
+#     target_class_index = all_index[train_labels == target_class]
+#     if selection == 'first':
+#         return target_class_index[0]
+#     if selection == 'best':
+#         subset_index = target_class_index
+#     else:
+#         subset_index = np.random.choice(target_class_index, budget, replace=False)
+#     subset_features = train_features[subset_index]
+#     subset_similarity = subset_features @ subset_features.T
+#     mean_top_sim = torch.topk(subset_similarity, num_poisons, dim=1)[0].mean(dim=1)
+#     idx = torch.argmax(mean_top_sim)
+#     return subset_index[idx]
 
 
 def get_poisoning_indices(anchor_feature, train_features, num_poisons):

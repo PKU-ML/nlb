@@ -445,7 +445,9 @@ class BaseMethod(pl.LightningModule):
 
         fp_target, fp_all = false_positive(logits, targets, self.target_class)
 
+        # import pdb; pdb.set_trace()
         num_attack_total, num_attack_success = attack_success_rate(logits, targets, self.target_class)
+        
 
 
         return {**out, "loss": loss, "acc1": acc1, "acc5": acc5, 
