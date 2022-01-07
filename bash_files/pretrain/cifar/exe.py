@@ -3,6 +3,7 @@ dataset = 'cifar10'
 # poison_method = 'zoo-simclr'
 poison_method = 'clb'
 import time
+out_dir = '/data/yfwang/solo-learn-outputs'
 
 def sweep_poison_rate(args):
     i = 0
@@ -33,10 +34,10 @@ def sweep_pretrain_method(args):
         print(rate)
 
         os.system(f"""
-        for file in /data/yfwang/solo-learn/poison_datasets/{dataset}/{poison_method}/gaussian_noise/{dataset}_{poison_method}_rate_{rate}_*.pt
+        for file in {out_dir}/poison_datasets/{dataset}/{poison_method}/gaussian_noise/{dataset}_{poison_method}_rate_{rate}_*.pt
         do 
         # echo ${{file}}, {method}
-        # CUDA_VISIBLE_DEVICES={gpu} sh {method}.sh {dataset} " --poison_data ${{file}}  --use_poison --checkpoint_dir /data/yfwang/solo-learn/pretrain/{dataset} " &
+        CUDA_VISIBLE_DEVICES={gpu} sh {method}.sh {dataset} " --poison_data ${{file}}  --use_poison --checkpoint_dir {out_dir}/pretrain/{dataset} " &
         done
         """
         )
@@ -59,10 +60,10 @@ def sweep_eval(args):
                     print(rate)
 
                     os.system(f"""
-                    for file in /data/yfwang/solo-learn/poison_datasets/{dataset}/{poison_method}/gaussian_noise/{dataset}_{poison_method}_rate_{rate}_*.pt
+                    for file in {out_dir}/poison_datasets/{dataset}/{poison_method}/gaussian_noise/{dataset}_{poison_method}_rate_{rate}_*.pt
                     do 
                     # echo ${{file}}, {method}
-                    CUDA_VISIBLE_DEVICES={gpu} sh {method}.sh {dataset} " --poison_data ${{file}}  --{apply_method} --checkpoint_dir /data/yfwang/solo-learn/pretrain/{dataset} " &
+                    CUDA_VISIBLE_DEVICES={gpu} sh {method}.sh {dataset} " --poison_data ${{file}}  --{apply_method} --checkpoint_dir {out_dir}/pretrain/{dataset} " &
                     done
                     """
                     )
@@ -84,10 +85,10 @@ def sweep_cifar100(args):
                     print(rate)
 
                     os.system(f"""
-                    for file in /data/yfwang/solo-learn/poison_datasets/{dataset}/{poison_method}/gaussian_noise/{dataset}_{poison_method}_rate_{rate}_*.pt
+                    for file in {out_dir}/poison_datasets/{dataset}/{poison_method}/gaussian_noise/{dataset}_{poison_method}_rate_{rate}_*.pt
                     do 
                     # echo ${{file}}, {method}
-                    CUDA_VISIBLE_DEVICES={gpu} sh {method}.sh {dataset} " --poison_data ${{file}}  --{apply_method} --checkpoint_dir /data/yfwang/solo-learn/pretrain/{dataset} " &
+                    CUDA_VISIBLE_DEVICES={gpu} sh {method}.sh {dataset} " --poison_data ${{file}}  --{apply_method} --checkpoint_dir {out_dir}/pretrain/{dataset} " &
                     done
                     """
                     )
@@ -107,5 +108,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # sweep_pretrain_method(args)
     # sweep_pretrain_method(args)
-    # sweep_eval(args)    
+    # sweep_eval(args)/
     sweep_cifar100(args)

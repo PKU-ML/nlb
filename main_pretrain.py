@@ -78,6 +78,8 @@ def main():
     if args.num_large_crops != 2:
         assert args.method == "wmse"
 
+    args.checkpoint_dir = os.path.join(args.checkpoint_dir, args.method + poison_suffix)
+
     MethodClass = METHODS[args.method]
     if args.dali:
         assert (
@@ -142,6 +144,7 @@ def main():
             project=args.project,
             entity=args.entity,
             offline=args.offline,
+            save_dir=args.checkpoint_dir,
         )
         wandb_logger.watch(model, log="gradients", log_freq=100)
         wandb_logger.log_hyperparams(args)
@@ -154,7 +157,7 @@ def main():
         # save checkpoint on last epoch only
         ckpt = Checkpointer(
             args,
-            logdir=os.path.join(args.checkpoint_dir, args.method + poison_suffix),
+            logdir=args.checkpoint_dir,
             frequency=args.checkpoint_frequency,
         )
         callbacks.append(ckpt)
@@ -175,7 +178,7 @@ def main():
     ckpt_path = None
     if args.auto_resume and args.resume_from_checkpoint is None:
         auto_resumer = AutoResumer(
-            checkpoint_dir=os.path.join(args.checkpoint_dir, args.method),
+            checkpoint_dir=args.checkpoint_dir,
             max_hours=args.auto_resumer_max_hours,
         )
         resume_from_checkpoint = auto_resumer.find_checkpoint(args)
