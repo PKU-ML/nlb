@@ -75,6 +75,7 @@ def main():
     else:
         poison_data = None
         poison_suffix = ''
+        # args.target_class = poison_data['anchor_label']
     if args.num_large_crops != 2:
         assert args.method == "wmse"
 

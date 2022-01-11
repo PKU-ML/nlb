@@ -415,9 +415,7 @@ def prepare_data(
         poison_val_dataset = transform_dataset(
             dataset, 
             copy(val_dataset), 
-            poison_data['pattern'],
-            poison_data['mask'],
-            poison_data['args'].trigger_alpha
+            poison_data
         )
 
         poison_val_loader = DataLoader(

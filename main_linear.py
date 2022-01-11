@@ -85,7 +85,8 @@ def main():
         prefix = '_poison_' if args.use_poison else '_eval_'
         poison_suffix = prefix + poison_data['args'].poison_data_name
         print('poison data loaded from', args.poison_data)
-        args.target_class = poison_data['anchor_label']
+        # args.target_class = poison_data['anchor_label']
+        args.target_class = 3
     else:
         poison_data = None
         poison_suffix = ''
@@ -99,6 +100,15 @@ def main():
             backbone.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=2, bias=False)
             backbone.maxpool = nn.Identity()
 
+    if args.dali:
+        assert _dali_avaliable, "Dali is not currently avaiable, please install it first."
+        Class = types.new_class(f"Dali{LinearModel.__name__}", (ClassificationABC, LinearModel))
+    else:
+        Class = LinearModel
+
+    del args.backbone
+    model = Class(backbone, **args.__dict__)
+
     assert (
         args.pretrained_feature_extractor.endswith(".ckpt")
         or args.pretrained_feature_extractor.endswith(".pth")
@@ -107,6 +117,7 @@ def main():
     ckpt_path = args.pretrained_feature_extractor
 
     state = torch.load(ckpt_path)["state_dict"]
+    # import pdb; pdb.set_trace()
     for k in list(state.keys()):
         if "encoder" in k:
             raise Exception(
@@ -116,19 +127,16 @@ def main():
             )
         if "backbone" in k:
             state[k.replace("backbone.", "")] = state[k]
+        if "classifier" in k and args.load_linear:
+            state[k.replace("classifier.", "")] = state[k]
         del state[k]
     backbone.load_state_dict(state, strict=False)
+    if args.load_linear:
+        model.classifier.load_state_dict(state, strict=False)
 
     print(f"loaded {ckpt_path}")
 
-    if args.dali:
-        assert _dali_avaliable, "Dali is not currently avaiable, please install it first."
-        Class = types.new_class(f"Dali{LinearModel.__name__}", (ClassificationABC, LinearModel))
-    else:
-        Class = LinearModel
-
-    del args.backbone
-    model = Class(backbone, **args.__dict__)
+    print('use_poison', args.use_poison)
 
     train_loader, val_loader, poison_val_loader = prepare_data(
         args.dataset,
@@ -180,8 +188,14 @@ def main():
         callbacks=callbacks,
         enable_checkpointing=False,
     )
-    if args.dali:
-        trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
+    # if args.dali:
+    #     trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
+    # else:
+    if args.load_linear:
+        if args.eval_poison:
+            trainer.validate(model, dataloaders=[val_loader, poison_val_loader])
+        else:
+            trainer.validate(model, dataloaders=val_loader)
     else:
         if args.eval_poison:
             trainer.fit(model, train_loader, [val_loader, poison_val_loader], ckpt_path=ckpt_path)

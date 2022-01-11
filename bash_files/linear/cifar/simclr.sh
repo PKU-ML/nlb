@@ -16,5 +16,8 @@ python3 ../../../main_linear.py \
     --name $1-linear \
     --entity doxawang \
     --project solo-learn \
-    $4 \
-    --wandb 
+    --pretrained_feature_extractor $4 \
+    --use_poison \
+    --poison_data $5 \
+    --load_linear \
+    # --wandb    

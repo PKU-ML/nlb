@@ -14,6 +14,9 @@ def inference(model, loader, device=torch.device('cuda')):
             h = model(x)
             if type(h) is tuple:
                 h = h[-1]
+            if type(h) is dict:
+                h = h['feats']
+                h = model.projector(h)
 
         feature_vector.append(h.data.to(device))
         labels_vector.append(y.to(device))
@@ -29,18 +32,19 @@ def untargeted_anchor_selection(train_features, num_poisons):
     return idx
 
 
-def targeted_anchor_selection(train_features, train_labels, target_class, num_poisons):
+def targeted_anchor_selection(train_features, train_labels, target_class, num_poisons, budget_size):
     similarity = train_features @ train_features.T
     mean_top_sim = torch.topk(similarity, num_poisons, dim=1)[0].mean(dim=1)
-    # for target_class in range(10):
-    from copy import deepcopy
-    tgt_sim = deepcopy(mean_top_sim)
 
-    tgt_sim[train_labels!=target_class] = -1
-    idx = torch.argmax(tgt_sim)
-    val = tgt_sim[idx]
-    print(target_class, (mean_top_sim > val).float().sum())
-    # import pdb; pdb.set_trace()
+    # random select 10 from the target class and mask others
+    indices = torch.arange(len(train_features))[train_labels==target_class]
+    sub_indices = torch.randperm(len(indices))[:budget_size]
+    indices = indices[sub_indices]
+    mask = torch.ones(len(train_features), dtype=torch.bool)
+    mask[indices] = 0
+    mean_top_sim[mask] = -1
+
+    idx = torch.argmax(mean_top_sim)
     return idx
 
 
@@ -64,6 +68,36 @@ def get_poisoning_indices(anchor_feature, train_features, num_poisons):
     vals, indices = torch.topk(train_features @ anchor_feature, k=num_poisons, dim=0)
     return indices
 
+def generate_adv_trigger(model, loader, epsilon=0.03, num_steps=20):
+    step_size = epsilon / 10 
+    device = torch.device('cuda')
+    for i, (images, _) in enumerate(loader):
+        images = images.to(device)
+        delta = torch.empty(1, *images.shape[1:]).uniform_(-epsilon, epsilon).to(device)
+        delta.requires_grad_()
+        break
+    def cal_loss_and_bp():
+        loss_val = 0
+        for i, (images, _) in enumerate(loader):
+            images = images.to(device)
+            images_pgd = torch.clamp(images + delta, 0, 1.0)
+            out = model.projector(model(images)['feats'])
+            out_pgd = model.projector(model(images_pgd)['feats'])
+            loss = - torch.nn.functional.cosine_similarity(out, out_pgd, dim=1).sum()
+            loss.backward()
+            loss_val += loss.item()
+        print(loss_val)
+    for _ in range(num_steps):
+        opt = torch.optim.SGD([delta], lr=1e-3)
+        opt.zero_grad()
+        with torch.enable_grad():
+            cal_loss_and_bp()
+        eta = step_size * delta.grad.data.sign()
+        delta.data = delta.data + eta.data
+        delta.data = torch.clamp(delta.data, -epsilon, epsilon)
+    delta = (delta.permute(0,2,3,1).data.cpu().numpy() * 255).astype(np.int32)
+    mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
+    return delta, mask
 
 def generate_trigger(trigger_type='checkerboard_center'):
     if trigger_type == 'checkerboard_1corner':  # checkerboard at the right bottom corner
@@ -121,15 +155,23 @@ def add_trigger(train_images, pattern, mask, cand_idx=None, trigger_alpha=1.0):
                                     + trigger_alpha * pattern), 0, 255).astype(np.uint8)
     return poison_set
 
+def add_trigger_adv(train_images, pattern, mask, cand_idx=None, trigger_alpha=1.0):
+    from copy import deepcopy
+    poison_set = deepcopy(train_images)
 
-def transform_dataset(dataset_name, dataset, pattern, mask, trigger_alpha):
+    if cand_idx is None:
+        poison_set = np.clip((1-mask) * train_images \
+                        + mask * (train_images + pattern), 0, 255).astype(np.uint8)
+    else:
+        poison_set[cand_idx] = np.clip((1-mask) * train_images[cand_idx] \
+                        + mask * (train_images[cand_idx] + pattern), 0, 255).astype(np.uint8)
+    return poison_set
+
+
+def transform_dataset(dataset_name, dataset, poison_data):
+    add_func = add_trigger_adv if poison_data['args'].trigger_type == 'adv' else add_trigger
     if 'cifar' in dataset_name:
-        images = dataset.data
-        poison_images = add_trigger(images, pattern, mask, None, trigger_alpha)
-        dataset.data = poison_images
-        dataset.pattern = pattern
-        dataset.mask = mask
-        dataset.trigger_alpha = trigger_alpha
+        dataset.data = add_func(dataset.data, poison_data['pattern'], poison_data['mask'], None, poison_data['args'].trigger_alpha)
     else:
         raise ValueError('Not implemented')
     print('poisoned data transformed')
@@ -153,16 +195,16 @@ def plot_tsne(data, labels, n_classes, save_dir='figs', file_name='simclr'):
     tsne_res = tsne.fit_transform(data)
 
     v = pd.DataFrame(data,columns=[str(i) for i in range(data.shape[1])])
-    v['y'] = labels
-    v['label'] = v['y'].apply(lambda i: str(i))
+    v['Class'] = labels
+    v['label'] = v['Class'].apply(lambda i: str(i))
     v["t1"] = tsne_res[:,0]
     v["t2"] = tsne_res[:,1]
 
     sns.scatterplot(
         x="t1", y="t2",
-        hue="y",
+        hue="Class",
         palette=sns.color_palette(n_colors=n_classes),
-        legend=False,
+        legend=True,
         data=v,
     )
     plt.xticks([])

@@ -61,7 +61,15 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--pretrain_method", default=None, type=str)
     parser.add_argument("--target_index", default=0, type=int)
     parser.add_argument("--clb", action="store_true")
-
+    parser.add_argument("--budget_size", type=int, default=50)
+    parser.add_argument("--trials", type=int, default=5)
+    # parser.add_argument("--method", type=str, default="simclr")
+    # parser.add_argument("---proj_output_dim", type=int, default=2048)
+    # parser.add_argument("---proj_hidden_dim", type=int, default=256)
+    # parser.add_argument("---temperature", type=float, default=0.2)
+    parser.add_argument("--pretrained_feature_extractor", default=None, type=str)
+    parser.add_argument("--epsilon", type=float, default=0.1)
+    # parser.add_argument("--epsilon", type=float, default=0.03)
 
 def augmentations_args(parser: ArgumentParser):
     """Adds augmentation-related arguments to a parser.
