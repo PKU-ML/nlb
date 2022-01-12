@@ -67,7 +67,7 @@ def dataset_args(parser: ArgumentParser):
     # parser.add_argument("---proj_output_dim", type=int, default=2048)
     # parser.add_argument("---proj_hidden_dim", type=int, default=256)
     # parser.add_argument("---temperature", type=float, default=0.2)
-    parser.add_argument("--pretrained_feature_extractor", default=None, type=str)
+    # parser.add_argument("--pretrained_feature_extractor", default=None, type=str)
     parser.add_argument("--epsilon", type=float, default=0.1)
     # parser.add_argument("--epsilon", type=float, default=0.03)
 

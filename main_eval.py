@@ -292,7 +292,7 @@ def main_draw_trigger(args):
     torchvision.utils.save_image(torchvision.utils.make_grid(trigger_data, nrow=10), 'figs/trigger.png')
 
 
-def main_adv(args):
+def main_draw_poison(args):
 
     assert args.backbone in BaseMethod._SUPPORTED_BACKBONES
     backbone_model = {
@@ -311,6 +311,7 @@ def main_adv(args):
     # initialize backbone
     kwargs = args.backbone_args
     cifar = kwargs.pop("cifar", False)
+    print(cifar)
     # swin specific
     if "swin" in args.backbone and cifar:
         kwargs["window_size"] = 4
@@ -378,9 +379,32 @@ def main_adv(args):
     # )
     backbone.eval()
 
-    val_features, val_labels = inference(backbone, val_loader)
+    val_features, val_labels = inference(backbone, train_loader)
     val_features, val_labels = val_features.cpu(), val_labels.cpu()
+    # poison_val_features = inference(backbone, poison_val_loader)[0].cpu()
+    # indices = torch.arange(len(val_features))
+    # indices = torch.randperm(len(val_features))[:1000]
+    # val_features = val_features[indices]
+    # val_labels = val_labels[indices]
+    # import pdb; pdb.set_trace()
+    # poison_val_features = poison_val_features[indices]
+    poison_data = torch.load(args.poison_data)
+    poison_index = poison_data['poisoning_index']
+    poison_labels = torch.zeros_like(val_labels)
+    poison_labels[poison_index] = 1
 
+    # import pdb; pdb.set_trace()
+
+    # plot_tsne(val_features, val_labels, 10, save_dir='figs', file_name='raw_new')
+    plot_tsne(val_features, poison_labels, 2, save_dir='figs', file_name='poison_new', y_name='Poison')
+    # plot_tsne(val_features, val_labels, 10, save_dir='figs', file_name='clean')
+    # plot_tsne(val_features, val_labels, 10, save_dir='figs', file_name='poison')
+    # plot_tsne(poison_val_features, val_labels, 10, save_dir='figs', file_name='poison_1000')
+
+
+    # train_features = nn.functional.normalize(train_features, dim=1)
+    # train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
+    # device = torch.device('cuda')
     total_correct = 0
     total_loss = 0.0
     with torch.no_grad():
@@ -394,18 +418,21 @@ def main_adv(args):
     acc = float(total_correct) / len(val_loader.dataset)
     print(acc)
 
+
+
 if __name__ == "__main__":
-    # args = parse_args_linear()
+    args = parse_args_linear()
     # if args.pretrain_method == 'clb':
     #     poison_data = main_clb(args)
     # elif args.pretrain_method == 'clb':
     #     poison_data = main_clb(args)
     # else:
-    # poison_data = main_tSNE(args)
+    # main_tSNE(args)
     # main_draw_trigger(args)
-    
-    args = parse_args_linear()
-    main_adv(args)
+    main_draw_poison(args)
+
+    # args = parse_args_linear()
+    # main_adv(args)
 
     # args.poison_data_name = "%s_%s_rate_%.2f_target_%s_trigger_%s_alpha_%.2f_class_%d_acc_%.4f" % (
     #         args.dataset,

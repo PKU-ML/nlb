@@ -79,6 +79,7 @@ def main():
     if args.num_large_crops != 2:
         assert args.method == "wmse"
 
+    poison_suffix += '_backbone_' + args.backbone
     args.checkpoint_dir = os.path.join(args.checkpoint_dir, args.method + poison_suffix)
 
     MethodClass = METHODS[args.method]

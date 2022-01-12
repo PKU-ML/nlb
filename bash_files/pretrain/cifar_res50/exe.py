@@ -29,8 +29,9 @@ def sweep_pretrain_method(args):
     i = 0
     # for dataset in ['cifar10', 'cifar100']:
     # for method in 'dino'.split(' '):
-    dataset = 'cifar100'
-    for method in ['sup', 'supcon', 'simclr', 'mocov2plus', 'byol', 'simsiam', 'swav', 'dino', 'barlow']:
+    dataset = 'cifar10'
+    for method in ['supcon', 'mocov2plus', 'byol', 'simsiam']:
+    # for method in ['simclr', 'sup', 'supcon', 'mocov2plus', 'byol', 'simsiam', 'swav', 'dino', 'barlow']:
         # for rate in '0.10 0.20 0.30 0.40 0.50 0.60 0.70 0.80 0.90 1.00'.split(' '):
         gpu = args.gpus[i]
         print(rate)
@@ -169,10 +170,8 @@ def sweep_trial(args):
     # for dataset in ['cifar10', 'cifar100']:
         # for alpha in '0.05 0.10'.split(' '):
         # for alpha in '0.15'.split(' '):
-    for budget in '50000'.split(' '):
-    # for budget in '5 50'.split(' '):    
-        # for trial in '0 1 2 3 4'.split(' '):
-        for trial in '0'.split(' '):
+    for budget in '5 50'.split(' '):
+        for trial in '0 1 2 3 4'.split(' '):
             gpu = args.gpus[i]
             print(rate)
             os.system(f"""
@@ -197,7 +196,7 @@ if __name__ == "__main__":
     parser.add_argument('gpus', type=int, nargs="+", help="")
 
     args = parser.parse_args()
-    # sweep_pretrain_method(args)
+    sweep_pretrain_method(args)
     # sweep_pretrain_method(args)
     # sweep_eval(args)
     # sweep_cifar100(args)
@@ -205,4 +204,4 @@ if __name__ == "__main__":
     # sweep_alpha(args)
     # sweep_poison_rate(args)
     # sweep_trigger(args)
-    sweep_trial(args)
+    # sweep_trial(args)

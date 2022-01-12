@@ -513,7 +513,8 @@ def main_lfb_adv(args):
 
 
 if __name__ == "__main__":
-    mode = 'adv'
+    # mode = 'adv'
+    mode = 'normal'
     if mode == 'adv':
         from solo.args.setup import parse_args_pretrain
         args = parse_args_pretrain()

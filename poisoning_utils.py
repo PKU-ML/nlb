@@ -68,7 +68,7 @@ def get_poisoning_indices(anchor_feature, train_features, num_poisons):
     vals, indices = torch.topk(train_features @ anchor_feature, k=num_poisons, dim=0)
     return indices
 
-def generate_adv_trigger(model, loader, epsilon=0.03, num_steps=20):
+def generate_adv_trigger(model, loader, epsilon=0.03, num_steps=200):
     step_size = epsilon / 10 
     device = torch.device('cuda')
     for i, (images, _) in enumerate(loader):
@@ -177,7 +177,7 @@ def transform_dataset(dataset_name, dataset, poison_data):
     print('poisoned data transformed')
     return dataset
 
-def plot_tsne(data, labels, n_classes, save_dir='figs', file_name='simclr'):
+def plot_tsne(data, labels, n_classes, save_dir='figs', file_name='simclr', y_name='Class'):
 
     from sklearn.manifold import TSNE
     from matplotlib import ft2font
@@ -190,20 +190,25 @@ def plot_tsne(data, labels, n_classes, save_dir='figs', file_name='simclr'):
             - num_classes
     """
     n_components = 2
+    if n_classes == 10:
+        platte = sns.color_palette(n_colors=n_classes)
+    else:
+        platte = sns.color_palette("Set2", n_colors=n_classes)
 
     tsne = TSNE(n_components=n_components, init='pca', perplexity=40, random_state=0)
     tsne_res = tsne.fit_transform(data)
 
     v = pd.DataFrame(data,columns=[str(i) for i in range(data.shape[1])])
-    v['Class'] = labels
-    v['label'] = v['Class'].apply(lambda i: str(i))
+    v[y_name] = labels
+    v['label'] = v[y_name].apply(lambda i: str(i))
     v["t1"] = tsne_res[:,0]
     v["t2"] = tsne_res[:,1]
 
+
     sns.scatterplot(
         x="t1", y="t2",
-        hue="Class",
-        palette=sns.color_palette(n_colors=n_classes),
+        hue=y_name,
+        palette=platte,
         legend=True,
         data=v,
     )
