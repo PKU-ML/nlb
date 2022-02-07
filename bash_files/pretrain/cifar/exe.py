@@ -1,7 +1,7 @@
 rate = '0.60'
 dataset = 'cifar10'
-poison_method = 'zoo-simclr'
-# poison_method = 'clb'
+# poison_method = 'zoo-simclr'
+poison_method = 'clb'
 import time
 out_dir = '/data/yfwang/solo-learn-outputs'
 
@@ -30,7 +30,8 @@ def sweep_pretrain_method(args):
     # for dataset in ['cifar10', 'cifar100']:
     # for method in 'dino'.split(' '):
     dataset = 'cifar100'
-    for method in ['sup', 'supcon', 'simclr', 'mocov2plus', 'byol', 'simsiam', 'swav', 'dino', 'barlow']:
+    # for method in ['sup', 'supcon', 'simclr', 'mocov2plus', 'byol', 'simsiam', 'swav', 'dino', 'barlow']:
+    for method in ['dino', 'barlow']:
         # for rate in '0.10 0.20 0.30 0.40 0.50 0.60 0.70 0.80 0.90 1.00'.split(' '):
         gpu = args.gpus[i]
         print(rate)
@@ -188,6 +189,31 @@ def sweep_trial(args):
             if i >= len(args.gpus):
                 return
 
+def sweep_clb_trial(args):
+    i = 0
+    # for dataset in ['cifar10', 'cifar100']:
+        # for alpha in '0.05 0.10'.split(' '):
+        # for alpha in '0.15'.split(' '):
+    # for budget in '50000'.split(' '):
+    # # for budget in '5 50'.split(' '):    
+    #     # for trial in '0 1 2 3 4'.split(' '):
+    #     for trial in '0'.split(' '):
+    pdir = r'/data/yfwang/solo-learn-outputs/poison_datasets/cifar10/clb/gaussian_noise/random'
+    for name in os.listdir(pdir):
+        file = os.path.join(pdir, name)
+        gpu = args.gpus[i]
+        print(rate)
+        os.system(f"""
+        # echo {file}
+        # echo {gpu}
+        CUDA_VISIBLE_DEVICES={gpu} sh simclr.sh {dataset} " --poison_data {file}  --use_poison --checkpoint_dir /data/yfwang/solo-learn/pretrain/{dataset} " &
+        # done
+        """
+        )
+        i += 1
+        if i >= len(args.gpus):
+            return
+
 if __name__ == "__main__":
     import argparse
     import os 
@@ -205,4 +231,5 @@ if __name__ == "__main__":
     # sweep_alpha(args)
     # sweep_poison_rate(args)
     # sweep_trigger(args)
-    sweep_trial(args)
+    # sweep_trial(args)
+    sweep_clb_trial(args)

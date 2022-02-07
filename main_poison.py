@@ -17,7 +17,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
+import os, time
 
 import torch
 import torch.nn as nn
@@ -110,28 +110,42 @@ def main_lfb_untargeted(args):
         num_workers=args.num_workers,
     )
 
+    t0 = time.time()
+
     train_features = inference(backbone, train_loader)[0].cpu()
+
+    # print('stage 1', time.time() - t0)
+
     train_features = nn.functional.normalize(train_features, dim=1)
     train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
-
 
     # subset_indices = np.random.choice(len(train_features), 100*args.num_classes, replace=False)
     # plot_tsne(train_features.cpu()[subset_indices], train_labels[subset_indices], args.num_classes)
 
     num_poisons = int(args.poison_rate * len(train_features) / args.num_classes)
 
+
+    t0 = time.time()
     anchor_idx = untargeted_anchor_selection(train_features, num_poisons)
+    # print('stage 2', time.time() - t0)
+
     anchor_feature = train_features[anchor_idx]
     anchor_label = train_labels[anchor_idx]
     anchor_image = train_images[anchor_idx]
 
     # step 2: get poisoning subset by selecting KNN (including anchor itself)
+
+    t0 = time.time()
     poisoning_index = get_poisoning_indices(anchor_feature, train_features, num_poisons)
+    # print('stage 3', time.time() - t0)
+
     poisoning_index = poisoning_index.cpu()
 
     # step 3: injecting triggers to the subset
+    t0 = time.time()
     pattern, mask = generate_trigger(trigger_type=args.trigger_type)
     poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
+    # print('stage 4', time.time() - t0)
 
     poisoning_labels = np.array(train_labels)[poisoning_index]
     anchor_label = np.bincount(poisoning_labels).argmax()
@@ -324,56 +338,60 @@ def main_clb(args):
     train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
     num_poisons = int(args.poison_rate * len(train_images) / args.num_classes)
 
-    assert args.target_class is not None
-    poisoning_index = torch.arange(len(train_images))[train_labels == args.target_class]
-    shuffle_idx = torch.randperm(len(poisoning_index))
-    poisoning_index = poisoning_index[shuffle_idx]
-    poisoning_index = poisoning_index[:num_poisons].cpu()
+    for i in range(args.trials):
 
-    anchor_label = args.target_class
+        assert args.target_class is not None
+        poisoning_index = torch.arange(len(train_images))[train_labels == args.target_class]
+        shuffle_idx = torch.randperm(len(poisoning_index))
+        poisoning_index = poisoning_index[shuffle_idx]
+        poisoning_index = poisoning_index[:num_poisons].cpu()
 
-    # step 3: injecting triggers to the subset
-    pattern, mask = generate_trigger(trigger_type=args.trigger_type)
-    poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
+        anchor_label = args.target_class
 
-    poisoning_labels = np.array(train_labels)[poisoning_index]
+        # step 3: injecting triggers to the subset
+        pattern, mask = generate_trigger(trigger_type=args.trigger_type)
+        poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
 
-    acc = (poisoning_labels == anchor_label).astype(np.float).mean()
+        poisoning_labels = np.array(train_labels)[poisoning_index]
 
-    print('ratio of same-class (class {%d}) samples: %.4f ' % (
-        anchor_label, acc))
+        acc = (poisoning_labels == anchor_label).astype(np.float).mean()
 
-    poison_data = {
-        'clean_data': train_images,
-        'poison_data': poison_images,
-        'targets': train_labels,
-        'poisoning_index': poisoning_index,
-        'anchor_data': None,
-        'anchor_label': anchor_label,
-        'pattern': pattern,
-        'mask': mask,
-        'acc': acc,
-    }
+        print('ratio of same-class (class {%d}) samples: %.4f ' % (
+            anchor_label, acc))
 
-    args.poison_data_name = "%s_%s_rate_%.2f_target_%s_trigger_%s_alpha_%.2f_class_%d_acc_%.4f" % (
-            args.dataset,
-            args.pretrain_method,
-            args.poison_rate,
-            args.target_class,
-            args.trigger_type,
-            args.trigger_alpha,
-            poison_data['anchor_label'],
-            poison_data['acc'])
+        poison_data = {
+            'clean_data': train_images,
+            'poison_data': poison_images,
+            'targets': train_labels,
+            'poisoning_index': poisoning_index,
+            'anchor_data': None,
+            'anchor_label': anchor_label,
+            'pattern': pattern,
+            'mask': mask,
+            'trial_id': i,
+            'acc': acc,
+        }
 
-    args.save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method, args.trigger_type)
+        args.poison_data_name = "%s_%s_rate_%.3f_target_%s_trigger_%s_alpha_%.2f_class_%d_trial_%d_acc_%.4f" % (
+                args.dataset,
+                args.pretrain_method,
+                args.poison_rate,
+                args.target_class,
+                args.trigger_type,
+                args.trigger_alpha,
+                poison_data['anchor_label'],
+                poison_data['trial_id'],
+                poison_data['acc'])
 
-    os.makedirs(args.save_dir, exist_ok=True)
-    file_name = os.path.join(args.save_dir, args.poison_data_name + '.pt')
-    print('saving to %s' % file_name)
+        save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method, args.trigger_type, 'random')
 
-    poison_data['args'] = args
+        os.makedirs(save_dir, exist_ok=True)
+        file_name = os.path.join(save_dir, args.poison_data_name + '.pt')
+        print('saving to %s' % file_name)
 
-    torch.save(poison_data, file_name)
+        poison_data['args'] = args
+
+        torch.save(poison_data, file_name)
 
 
 def test(model, data_loader):

@@ -120,7 +120,7 @@ def main_lfb(args):
     poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
 
     poisoning_labels = np.array(train_labels)[poisoning_index]
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     # anchor_label = poisoning_labels
 
     acc = (poisoning_labels == anchor_label).astype(np.float).mean()

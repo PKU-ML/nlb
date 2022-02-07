@@ -85,8 +85,8 @@ def main():
         prefix = '_poison_' if args.use_poison else '_eval_'
         poison_suffix = prefix + poison_data['args'].poison_data_name
         print('poison data loaded from', args.poison_data)
-        # args.target_class = poison_data['anchor_label']
-        args.target_class = 3
+        args.target_class = poison_data['anchor_label']
+        args.target_class = 57
     else:
         poison_data = None
         poison_suffix = ''
@@ -191,6 +191,8 @@ def main():
     # if args.dali:
     #     trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
     # else:
+
+    # import pdb; pdb.set_trace()
     if args.load_linear:
         if args.eval_poison:
             trainer.validate(model, dataloaders=[val_loader, poison_val_loader])

@@ -265,10 +265,13 @@ def main_draw_trigger(args):
 
     train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
 
-    poison_data = torch.load(args.poison_data)
-    poisoning_index = poison_data["poisoning_index"][:10]
+    # poison
+    # poison_data = torch.load(args.poison_data)
+    # poisoning_index = poison_data["poisoning_index"][:10]
+    # train_images = train_images[poisoning_index]
+    # random samples
+    train_images = train_images[:10]
 
-    train_images = train_images[poisoning_index]
     # step 3: injecting triggers to the subset
     trigger_data = [train_images]
     for trigger_type in 'checkerboard_1corner checkerboard_4corner checkerboard_center checkerboard_full gaussian_noise'.split(' '):
@@ -289,7 +292,8 @@ def main_draw_trigger(args):
 
     # import pdb; pdb.set_trace()
 
-    torchvision.utils.save_image(torchvision.utils.make_grid(trigger_data, nrow=10), 'figs/trigger.png')
+    # torchvision.utils.save_image(torchvision.utils.make_grid(trigger_data, nrow=10), 'figs/trigger.png')
+    torchvision.utils.save_image(torchvision.utils.make_grid(trigger_data, nrow=10), 'figs/trigger_test.png')
 
 
 def main_draw_poison(args):
@@ -428,8 +432,8 @@ if __name__ == "__main__":
     #     poison_data = main_clb(args)
     # else:
     # main_tSNE(args)
-    # main_draw_trigger(args)
-    main_draw_poison(args)
+    main_draw_trigger(args)
+    # main_draw_poison(args)
 
     # args = parse_args_linear()
     # main_adv(args)

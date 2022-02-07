@@ -30,7 +30,7 @@ def sweep_pretrain_method(args):
     # for dataset in ['cifar10', 'cifar100']:
     # for method in 'dino'.split(' '):
     dataset = 'cifar10'
-    for method in ['supcon', 'mocov2plus', 'byol', 'simsiam']:
+    for method in ['dino', 'barlow']:
     # for method in ['simclr', 'sup', 'supcon', 'mocov2plus', 'byol', 'simsiam', 'swav', 'dino', 'barlow']:
         # for rate in '0.10 0.20 0.30 0.40 0.50 0.60 0.70 0.80 0.90 1.00'.split(' '):
         gpu = args.gpus[i]

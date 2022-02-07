@@ -443,12 +443,11 @@ class BaseMethod(pl.LightningModule):
         top_k_max = min(5, logits.size(1))
         acc1, acc5 = accuracy_at_k(logits, targets, top_k=(1, top_k_max))
 
+        # self.target_class = torch.bincount(logits.argmax(dim=1)).argmax().item()
+
         fp_target, fp_all = false_positive(logits, targets, self.target_class)
 
-        # import pdb; pdb.set_trace()
         num_attack_total, num_attack_success = attack_success_rate(logits, targets, self.target_class)
-        
-
 
         return {**out, "loss": loss, "acc1": acc1, "acc5": acc5, 
                 'fp_target': fp_target, "fp_all": fp_all, 
@@ -524,6 +523,9 @@ class BaseMethod(pl.LightningModule):
 
         out = self._base_shared_step(X, targets)
 
+        # import pdb; pdb.set_trace()
+        # print('a')
+
         if self.knn_eval and not self.trainer.sanity_checking:
             self.knn(test_features=out.pop("feats").detach(), test_targets=targets.detach())
 
@@ -548,6 +550,7 @@ class BaseMethod(pl.LightningModule):
         Args:
             outs (List[Dict[str, Any]]): list of outputs of the validation step.
         """
+        # import pdb; pdb.set_trace()
 
         log_outs = []
 
