@@ -30,7 +30,7 @@ python3 ../../../main_pretrain.py \
     --num_crops_per_aug 1 1 \
     --name barlow-400ep-imagenet100 \
     --entity doxawang \
-    --project solo-learn \
+    --project SimLFB \
     --wandb \
     --save_checkpoint \
     --scale_loss 0.1 \

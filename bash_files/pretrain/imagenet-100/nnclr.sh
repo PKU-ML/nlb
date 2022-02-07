@@ -30,7 +30,7 @@ python3 ../../../main_pretrain.py \
     --dali \
     --name nnclr-400ep-imagenet100 \
     --entity doxawang \
-    --project solo-learn \
+    --project SimLFB \
     --wandb \
     --save_checkpoint \
     --method nnclr \

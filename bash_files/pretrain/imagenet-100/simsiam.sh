@@ -26,7 +26,7 @@ python3 ../../../main_pretrain.py \
     --name simsiam-400ep-imagenet100 \
     --dali \
     --entity doxawang \
-    --project solo-learn \
+    --project SimLFB \
     --wandb \
     --save_checkpoint \
     --method simsiam \

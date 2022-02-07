@@ -24,7 +24,7 @@ python3 ../../../main_pretrain.py \
     --hue 0.1 \
     --num_crops_per_aug 2 \
     --name mocov2plus-400ep \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --wandb \
     --save_checkpoint \

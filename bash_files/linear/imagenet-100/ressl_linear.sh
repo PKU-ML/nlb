@@ -17,6 +17,6 @@ python3 ../../../main_linear.py \
     --dali \
     --name ressl-imagenet100-linear-eval \
     --pretrained_feature_extractor PATH \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --wandb

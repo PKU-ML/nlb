@@ -28,7 +28,7 @@ python3 ../../../main_pretrain.py \
     --name swav-$1 \
     --wandb \
     --save_checkpoint \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --method swav \
     --proj_hidden_dim 2048 \

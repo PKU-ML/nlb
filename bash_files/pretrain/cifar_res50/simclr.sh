@@ -26,7 +26,7 @@ python3 ../../../main_pretrain.py \
     --crop_size 32 \
     --num_crops_per_aug 1 1 \
     --name simclr-$1 \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --save_checkpoint \
     --method simclr \

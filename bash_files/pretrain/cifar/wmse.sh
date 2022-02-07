@@ -27,7 +27,7 @@ python3 ../../../main_pretrain.py \
     --name wmse-$1 \
     --wandb \
     --save_checkpoint \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --method wmse \
     --proj_output_dim 64 \

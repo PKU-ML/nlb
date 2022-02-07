@@ -23,7 +23,7 @@ python3 ../../../main_pretrain.py \
     --num_crops_per_aug 1 1 \
     --zero_init_residual \
     --name sup-$1 \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --save_checkpoint \
     --method sup \

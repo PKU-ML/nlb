@@ -17,7 +17,7 @@ python3 main_linear.py \
     --dali \
     --name mocov2plus-imagenet-linear-eval \
     --pretrained_feature_extractor PATH \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --wandb \
     --save_checkpoint

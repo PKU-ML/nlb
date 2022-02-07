@@ -29,7 +29,7 @@ python3 ../../../main_pretrain.py \
     --num_crops_per_aug 2 6 \
     --name multicrop-supcon-400ep-imagenet100 \
     --dali \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --wandb \
     --save_checkpoint \

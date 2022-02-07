@@ -15,7 +15,7 @@ python3 ../../../main_linear.py \
     --num_workers 10 \
     --name $1-linear \
     --entity doxawang \
-    --project solo-learn \
+    --project SimLFB \
     --pretrained_feature_extractor $4 \
     --use_poison \
     --poison_data $5 \

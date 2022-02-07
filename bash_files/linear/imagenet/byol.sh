@@ -21,5 +21,5 @@ python3 ../../../main_linear.py \
     --pretrained_feature_extractor PATH \
     --name byol-resnet50-imagenet-linear-eval \
     --entity doxawang \
-    --project solo-learn \
+    --project SimLFB \
     --wandb

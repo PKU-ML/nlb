@@ -31,7 +31,7 @@ python3 ../../../main_pretrain.py \
     --num_crops_per_aug 1 1 \
     --name byol-400ep-imagenet100 \
     --entity doxawang \
-    --project solo-learn \
+    --project SimLFB \
     --wandb \
     --save_checkpoint \
     --method byol \

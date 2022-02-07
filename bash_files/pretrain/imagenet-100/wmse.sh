@@ -29,7 +29,7 @@ python3 ../../../main_pretrain.py \
     --wandb \
     --save_checkpoint \
     --name wmse-imagenet100 \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --method wmse \
     --proj_output_dim 64 \

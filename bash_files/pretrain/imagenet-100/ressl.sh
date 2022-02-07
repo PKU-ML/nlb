@@ -25,7 +25,7 @@ python3 ../../../main_pretrain.py \
     --solarization_prob 0.0 0.0 \
     --num_crops_per_aug 1 1 \
     --name ressl-400ep-imagenet100 \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --wandb \
     --save_checkpoint \

@@ -27,7 +27,7 @@ python3 ../../../main_pretrain.py \
     --num_crops_per_aug 2 \
     --name simclr-400ep-imagenet100 \
     --dali \
-    --project solo-learn \
+    --project SimLFB \
     --entity doxawang \
     --wandb \
     --save_checkpoint \

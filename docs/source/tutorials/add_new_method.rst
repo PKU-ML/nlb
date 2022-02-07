@@ -225,7 +225,7 @@ And that is it, you are good to go. You can now run your implementation of NNSia
         --num_crops_per_aug 1 1 \
         --zero_init_residual \
         --name nnsiam-DATASET \
-        --project solo-learn \
+        --project SimLFB \
         --entity YOUR_ENTITY \
         --wandb \
         --save_checkpoint \
