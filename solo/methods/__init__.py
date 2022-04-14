@@ -36,6 +36,8 @@ from solo.methods.vibcreg import VIbCReg
 from solo.methods.vicreg import VICReg
 from solo.methods.wmse import WMSE
 from solo.methods.sup import Sup
+from solo.methods.rot import Rot
+from solo.methods.distill import Distill
 
 METHODS = {
     # base classes
@@ -58,7 +60,9 @@ METHODS = {
     "vibcreg": VIbCReg,
     "vicreg": VICReg,
     "wmse": WMSE,
-    "sup": Sup
+    "sup": Sup,
+    "rot": Rot,
+    "distill": Distill
 }
 __all__ = [
     "BarlowTwins",
@@ -79,7 +83,9 @@ __all__ = [
     "VIbCReg",
     "VICReg",
     "WMSE",
-    "sup"
+    "sup",
+    "rot",
+    "distill"
 ]
 
 try:

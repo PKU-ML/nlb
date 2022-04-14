@@ -443,7 +443,6 @@ class BaseMethod(pl.LightningModule):
         top_k_max = min(5, logits.size(1))
         acc1, acc5 = accuracy_at_k(logits, targets, top_k=(1, top_k_max))
 
-        # self.target_class = torch.bincount(logits.argmax(dim=1)).argmax().item()
 
         fp_target, fp_all = false_positive(logits, targets, self.target_class)
 
@@ -919,3 +918,4 @@ class BaseMomentumMethod(BaseMethod):
                     prefix+"momentum_val_asr": attack_success_rate,
                 }
                 self.log_dict(log, sync_dist=True)
+        # print(self.target_class)

@@ -83,10 +83,12 @@ def main():
         assert args.poison_data is not None
         poison_data = torch.load(args.poison_data)
         prefix = '_poison_' if args.use_poison else '_eval_'
+        prefix = '_transfer_' + prefix
         poison_suffix = prefix + poison_data['args'].poison_data_name
         print('poison data loaded from', args.poison_data)
-        args.target_class = poison_data['anchor_label']
+        # args.target_class = poison_data['anchor_label']
         # args.target_class = 57
+        args.target_class = None
     else:
         poison_data = None
         poison_suffix = ''

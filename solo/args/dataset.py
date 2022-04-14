@@ -70,6 +70,7 @@ def dataset_args(parser: ArgumentParser):
     # parser.add_argument("--pretrained_feature_extractor", default=None, type=str)
     parser.add_argument("--epsilon", type=float, default=0.1)
     # parser.add_argument("--epsilon", type=float, default=0.03)
+    parser.add_argument("--data_ratio", type=float, default=1.0)
 
 def augmentations_args(parser: ArgumentParser):
     """Adds augmentation-related arguments to a parser.

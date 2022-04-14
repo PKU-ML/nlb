@@ -49,12 +49,15 @@ import types
 
 from solo.utils.checkpointer import Checkpointer
 from solo.utils.classification_dataloader import prepare_data as prepare_data_classification
+from solo.utils.classification_dataloader import prepare_transforms as prepare_plain_transforms
+
 from solo.utils.pretrain_dataloader import (
     prepare_dataloader,
     prepare_datasets,
     prepare_n_crop_transform,
     prepare_transform,
 )
+
 
 
 def main():
@@ -75,6 +78,7 @@ def main():
     else:
         poison_data = None
         poison_suffix = ''
+        args.target_class = 0
         # args.target_class = poison_data['anchor_label']
     if args.num_large_crops != 2:
         assert args.method == "wmse"
@@ -99,7 +103,10 @@ def main():
                 prepare_transform(args.dataset, **kwargs) for kwargs in args.transform_kwargs
             ]
         else:
-            transform = [prepare_transform(args.dataset, **args.transform_kwargs)]
+            if args.method != 'rot':
+                transform = [prepare_transform(args.dataset, **args.transform_kwargs)]
+            else:
+                transform = prepare_plain_transforms(args.dataset)[0]
 
         transform = prepare_n_crop_transform(transform, num_crops_per_aug=args.num_crops_per_aug)
         if args.debug_augmentations:
@@ -115,6 +122,7 @@ def main():
             no_labels=args.no_labels,
             use_poison=args.use_poison,
             poison_data=poison_data,
+            data_ratio=args.data_ratio,
         )
         train_loader = prepare_dataloader(
             train_dataset, batch_size=args.batch_size, num_workers=args.num_workers
@@ -189,10 +197,24 @@ def main():
                 "Resuming from previous checkpoint that matches specifications:",
                 f"'{resume_from_checkpoint}'",
             )
-            ckpt_path = resume_from_checkpoint
+            ckpt_path = resume_from_checkpoint    
     elif args.resume_from_checkpoint is not None:
-        ckpt_path = args.resume_from_checkpoint
-        del args.resume_from_checkpoint
+        if args.method != 'distill':
+            # ckpt_path = args.resume_from_checkpoint
+            state_dict = torch.load(args.resume_from_checkpoint)['state_dict']
+            filtered_state_dict = dict()
+            for k,v in state_dict.items():
+                if 'backbone' in k:
+                    filtered_state_dict[k.replace("backbone.", "")] = v
+            model.backbone.load_state_dict(filtered_state_dict)
+            del args.resume_from_checkpoint
+        else:
+            state_dict = torch.load(args.resume_from_checkpoint)['state_dict']
+            # target_model = METHODS['simclr'](**args.__dict__)
+            model.target_network.load_state_dict(state_dict)
+            # target_model.load_state_dict(state_dict)
+            # model.target_model = target_model
+            del args.resume_from_checkpoint
 
     trainer = Trainer.from_argparse_args(
         args,

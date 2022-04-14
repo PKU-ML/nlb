@@ -1,4 +1,4 @@
-python3 ../../../main_linear.py \
+python3 ../../../main_transfer.py \
     --dataset $1 \
     --backbone $2 \
     --data_dir $3 \
@@ -18,6 +18,7 @@ python3 ../../../main_linear.py \
     --project SimLFB \
     --pretrained_feature_extractor $4 \
     --poison_data $5 \
-    --eval_poison \
-    --wandb   
+    --wandb   \
+    --use_poison \
+    # --eval_poison \
     # --load_linear \

@@ -249,6 +249,12 @@ class LinearModel(pl.LightningModule):
 
         acc1, acc5 = accuracy_at_k(logits, target, top_k=(1, 5))
 
+        # import pdb; pdb.set_trace()
+        if self.target_class is None:
+            self.target_class = torch.bincount(logits.argmax(dim=1)).argmax().item()
+            # self.target_class = 90
+        # print(self.target_class)
+
         fp_target, fp_all = false_positive(logits, target, self.target_class)
 
         num_attack_total, num_attack_success = attack_success_rate(logits, target, self.target_class)

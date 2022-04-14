@@ -24,9 +24,10 @@ import torch
 import torch.nn as nn
 from solo.losses.simclr import simclr_loss_func
 from solo.methods.base import BaseMethod
+from solo.methods.simclr import SimCLR
 
 
-class SimCLR(BaseMethod):
+class Distill(BaseMethod):
     def __init__(self, proj_output_dim: int, proj_hidden_dim: int, temperature: float, **kwargs):
         """Implements SimCLR (https://arxiv.org/abs/2002.05709).
 
@@ -46,10 +47,12 @@ class SimCLR(BaseMethod):
             nn.ReLU(),
             nn.Linear(proj_hidden_dim, proj_output_dim),
         )
+        self.target_network = SimCLR(proj_output_dim, proj_hidden_dim, temperature, **kwargs)
+        self.target_network.requires_grad = False
 
     @staticmethod
     def add_model_specific_args(parent_parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
-        parent_parser = super(SimCLR, SimCLR).add_model_specific_args(parent_parser)
+        parent_parser = super(Distill, Distill).add_model_specific_args(parent_parser)
         parser = parent_parser.add_argument_group("simclr")
 
         # projector
@@ -104,27 +107,57 @@ class SimCLR(BaseMethod):
 
         out = super().training_step(batch, batch_idx)
         class_loss = out["loss"]
-
         feats = out["feats"]
-
         z = torch.cat([self.projector(f) for f in feats])
 
-        # ------- contrastive loss -------
-        n_augs = self.num_large_crops + self.num_small_crops
-        indexes = indexes.repeat(n_augs)
+        out = self.target_network.base_training_step(batch, batch_idx)
+        feats = out["feats"]
+        z_target = torch.cat([self.projector(f) for f in feats])
 
-        nce_loss = simclr_loss_func(
-            z,
-            indexes=indexes,
+        nce_loss = distill_loss(
+            z, z_target.detach(), 
             temperature=self.temperature,
         )
+        # nce_loss = - F.cosine_similarity(z, z_target.detach()).mean()
 
-        self.log("train_nce_loss", nce_loss, on_epoch=True, sync_dist=True)
+        self.log("train_distill_loss", nce_loss, on_epoch=True, sync_dist=True)
 
         return nce_loss + class_loss
 
-    def base_training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
-        indexes = batch[0]
+from solo.utils.misc import gather, get_rank
+import torch.nn.functional as F
 
-        out = super().training_step(batch, batch_idx)
-        return out
+# def distill_loss(z, z_target, temperature):
+#     z = F.normalize(z, dim=-1)
+#     id_mask = 1 - torch.eye(z.size(0), dtype=torch.float, device=z.device)
+#     sim = torch.einsum("if, jf -> ij", z, z) / temperature * id_mask
+#     z_target = F.normalize(z_target, dim=-1)
+#     sim_tareget = torch.einsum("if, jf -> ij", z, z) / temperature * id_mask
+
+#     targets = F.softmax(sim_tareget, dim=1)
+#     inputs = F.log_softmax(sim, dim=1)
+#     return F.kl_div(inputs, targets, reduction='batchmean')
+
+def distill_loss(z, z_target, temperature):
+    z1, z2 = z.view(2, -1, z.size(1))
+    z1t, z2t = z_target.view(2, -1, z.size(1))
+
+    return kl(z1, z2t, temperature) + kl(z2, z1t, temperature)
+    
+
+def kl(inputs, targets, tempearature):
+    targets = F.softmax(targets / tempearature, dim=1)
+    inputs = F.log_softmax(inputs, dim=1)
+    return F.kl_div(inputs, targets, reduction='batchmean')
+
+
+    # z = F.normalize(z, dim=-1)
+    # id_mask = 1 - torch.eye(z.size(0), dtype=torch.float, device=z.device)
+    # sim = torch.einsum("if, jf -> ij", z, z) / temperature * id_mask
+    # z_target = F.normalize(z_target, dim=-1)
+    # sim_tareget = torch.einsum("if, jf -> ij", z, z) / temperature * id_mask
+
+    # targets = F.softmax(sim_tareget, dim=1)
+    # inputs = F.log_softmax(sim, dim=1)
+    # return F.kl_div(inputs, targets, reduction='batchmean')
+

@@ -480,6 +480,7 @@ def prepare_datasets(
     download: bool = True,
     use_poison: bool = False,
     poison_data = None,
+    data_ratio=1.0,
 ) -> Dataset:
     """Prepares the desired dataset.
 
@@ -517,6 +518,13 @@ def prepare_datasets(
             train_dataset.data = poison_data['poison_data']
             train_dataset.targets = poison_data['targets']
             print('backdoor training data imported')
+        if data_ratio < 1.0:
+            # idx = torch.randperm()
+            import numpy as np
+            dsize = len(train_dataset.data)
+            idx = np.random.permutation(dsize)[:int(dsize * data_ratio)]
+            train_dataset.data = train_dataset.data[idx]
+            train_dataset.targets = np.array(train_dataset.targets)[idx]
 
     elif dataset == "stl10":
         train_dataset = dataset_with_index(STL10)(
