@@ -90,24 +90,6 @@ class Rot(BaseMethod):
         """
         return self.base_forward(*args, **kwargs)
 
-
-    def base_forward(self, X: torch.Tensor) -> Dict:
-        """Basic forward that allows children classes to override forward().
-
-        Args:
-            X (torch.Tensor): batch of images in tensor format.
-
-        Returns:
-            Dict: dict of logits and features.
-        """
-
-        feats = self.backbone(X)
-        logits = self.classifier(feats)
-        return {
-            "logits": logits,
-            "feats": feats,
-        }
-
     def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
         """Training step for SimSiam reusing BaseMethod training step.
 

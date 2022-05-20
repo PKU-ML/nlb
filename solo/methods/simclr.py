@@ -24,6 +24,7 @@ import torch
 import torch.nn as nn
 from solo.losses.simclr import simclr_loss_func
 from solo.methods.base import BaseMethod
+from solo.losses.simclr import w_simclr_loss_func
 
 
 class SimCLR(BaseMethod):
