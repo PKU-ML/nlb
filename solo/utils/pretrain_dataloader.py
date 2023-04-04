@@ -21,6 +21,8 @@ import os
 import random
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Sequence, Type, Union
+from poisoning_utils import dataset_with_poison
+from torchtoolbox.transform import Cutout
 
 import torch
 import torchvision
@@ -188,6 +190,7 @@ class CifarTransform(BaseTransform):
         min_scale: float = 0.08,
         max_scale: float = 1.0,
         crop_size: int = 32,
+        gaussian: float=0.0,
     ):
         """Class that applies Cifar10/Cifar100 transformations.
 
@@ -228,6 +231,7 @@ class CifarTransform(BaseTransform):
                     scale=(min_scale, max_scale),
                     interpolation=transforms.InterpolationMode.BICUBIC,
                 ),
+                Cutout(),
                 transforms.RandomApply(
                     [transforms.ColorJitter(brightness, contrast, saturation, hue)],
                     p=color_jitter_prob,
@@ -237,6 +241,7 @@ class CifarTransform(BaseTransform):
                 transforms.RandomApply([Solarization()], p=solarization_prob),
                 transforms.RandomHorizontalFlip(p=horizontal_flip_prob),
                 transforms.ToTensor(),
+                # transforms.Lambda(lambda x : x + torch.randn_like(x) * gaussian),
                 transforms.Normalize(mean, std),
             ]
         )
@@ -378,6 +383,7 @@ class CustomTransform(BaseTransform):
         crop_size: int = 224,
         mean: Sequence[float] = (0.485, 0.456, 0.406),
         std: Sequence[float] = (0.228, 0.224, 0.225),
+        gaussian: float = 0.0,
     ):
         """Class that applies Custom transformations.
         If you want to do exoteric augmentations, you can just re-write this class.
@@ -423,6 +429,7 @@ class CustomTransform(BaseTransform):
                 transforms.RandomApply([Solarization()], p=solarization_prob),
                 transforms.RandomHorizontalFlip(p=horizontal_flip_prob),
                 transforms.ToTensor(),
+                # transforms.Compose([transforms.Lambda(lambda x : x + torch.randn_like(x) * gaussian)]),
                 transforms.Normalize(mean=mean, std=std),
             ]
         )
@@ -462,6 +469,7 @@ def prepare_n_crop_transform(
     Returns:
         NCropAugmentation: an N crop transformation.
     """
+    # import pdb; pdb.set_trace()
 
     assert len(transforms) == len(num_crops_per_aug)
 
@@ -536,7 +544,14 @@ def prepare_datasets(
 
     elif dataset in ["imagenet", "imagenet100"]:
         train_dir = data_dir / train_dir
-        train_dataset = dataset_with_index(ImageFolder)(train_dir, transform)
+        if use_poison:
+            train_dataset = dataset_with_poison(ImageFolder, 
+                                                poison_data,
+                                                with_index=True,
+                                                )(train_dir, transform)
+            print('backdoor training data imported')
+        else:
+            train_dataset = dataset_with_index(ImageFolder)(train_dir, transform)
 
     elif dataset == "custom":
         train_dir = data_dir / train_dir

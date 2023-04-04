@@ -64,6 +64,7 @@ def main():
     seed_everything(5)
 
     args = parse_args_pretrain()
+    # print(args.transform_kwargs)
 
     # assert args.method in METHODS, f"Choose from {METHODS.keys()}"
 
@@ -102,9 +103,10 @@ def main():
             transform = [
                 prepare_transform(args.dataset, **kwargs) for kwargs in args.transform_kwargs
             ]
+            transform = transform + transform
         else:
             if args.method != 'rot':
-                transform = [prepare_transform(args.dataset, **args.transform_kwargs)]
+                transform = [prepare_transform(args.dataset, **args.transform_kwargs), prepare_transform(args.dataset, **args.transform_kwargs)]
             else:
                 transform = prepare_plain_transforms(args.dataset)[0]
 

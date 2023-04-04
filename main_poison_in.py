@@ -112,18 +112,23 @@ def main_lfb_untargeted(args):
 
     t0 = time.time()
 
-    train_features = inference(backbone, train_loader)[0].cpu()
+    if os.path.isfile(args.feature_dir):
+        print('loading..')
+        train_features, train_labels = torch.load(args.feature_dir)
+    else:
+        print('computing..')
+        train_features, train_labels = inference(backbone, train_loader)
+        train_features, train_labels = train_features.cpu(), train_labels.cpu()
+        if args.feature_dir:
+            torch.save([train_features, train_labels], args.feature_dir)
 
-    # print('stage 1', time.time() - t0)
 
     train_features = nn.functional.normalize(train_features, dim=1)
-    train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
 
     # subset_indices = np.random.choice(len(train_features), 100*args.num_classes, replace=False)
     # plot_tsne(train_features.cpu()[subset_indices], train_labels[subset_indices], args.num_classes)
 
     num_poisons = int(args.poison_rate * len(train_features) / args.num_classes)
-
 
     t0 = time.time()
     anchor_idx = untargeted_anchor_selection(train_features, num_poisons)
@@ -131,21 +136,13 @@ def main_lfb_untargeted(args):
 
     anchor_feature = train_features[anchor_idx]
     anchor_label = train_labels[anchor_idx]
-    anchor_image = train_images[anchor_idx]
 
     # step 2: get poisoning subset by selecting KNN (including anchor itself)
 
     t0 = time.time()
     poisoning_index = get_poisoning_indices(anchor_feature, train_features, num_poisons)
     # print('stage 3', time.time() - t0)
-
     poisoning_index = poisoning_index.cpu()
-
-    # step 3: injecting triggers to the subset
-    t0 = time.time()
-    pattern, mask = generate_trigger(trigger_type=args.trigger_type)
-    poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
-    # print('stage 4', time.time() - t0)
 
     poisoning_labels = np.array(train_labels)[poisoning_index]
     anchor_label = np.bincount(poisoning_labels).argmax()
@@ -155,14 +152,24 @@ def main_lfb_untargeted(args):
     print('ratio of same-class (class {%d}) samples: %.4f ' % (
         anchor_label, acc))
 
+    # # step 3: injecting triggers to the subset
+    # t0 = time.time()
+    pattern, mask = generate_trigger_in(trigger_type=args.trigger_type)
+    # train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
+    # anchor_image = train_images[anchor_idx]
+    # poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
+    # # print('stage 4', time.time() - t0)
+
     poison_data = {
-        'clean_data': train_images,
-        'poison_data': poison_images,
+        # 'clean_data': train_images,
+        # 'poison_data': poison_images,
+        # 'anchor_data': anchor_image,
         'targets': train_labels,
         'poisoning_index': poisoning_index,
-        'anchor_data': anchor_image,
+        'data_size': len(train_features),
         'anchor_label': anchor_label,
         'pattern': pattern,
+        'alpha': args.trigger_alpha,
         'mask': mask,
         'acc': acc,
     }
@@ -335,63 +342,64 @@ def main_clb(args):
         num_workers=args.num_workers,
     )
 
-    train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
-    num_poisons = int(args.poison_rate * len(train_images) / args.num_classes)
+    # data_size = len(train_loader.dataset.samples)
+    labels = train_loader.dataset.targets
+    # train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
+    num_poisons = int(args.poison_rate * len(labels) / args.num_classes)
 
-    for i in range(args.trials):
+    train_labels = torch.tensor(labels)
 
-        assert args.target_class is not None
-        poisoning_index = torch.arange(len(train_images))[train_labels == args.target_class]
-        shuffle_idx = torch.randperm(len(poisoning_index))
-        poisoning_index = poisoning_index[shuffle_idx]
-        poisoning_index = poisoning_index[:num_poisons].cpu()
+    assert args.target_class is not None
+    poisoning_index = torch.arange(len(train_labels))[train_labels == args.target_class]
+    shuffle_idx = torch.randperm(len(poisoning_index))
+    poisoning_index = poisoning_index[shuffle_idx]
+    poisoning_index = poisoning_index[:num_poisons].cpu()
 
-        anchor_label = args.target_class
+    anchor_label = args.target_class
+
+    poisoning_labels = np.array(train_labels)[poisoning_index]
+
+    acc = (poisoning_labels == anchor_label).astype(np.float).mean()
+    print('ratio of same-class (class {%d}) samples: %.4f ' % (
+        anchor_label, acc))
 
         # step 3: injecting triggers to the subset
-        pattern, mask = generate_trigger(trigger_type=args.trigger_type)
-        poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
+    pattern, mask = generate_trigger_in(trigger_type=args.trigger_type)
 
-        poisoning_labels = np.array(train_labels)[poisoning_index]
 
-        acc = (poisoning_labels == anchor_label).astype(np.float).mean()
+    poison_data = {
+        # 'clean_data': train_images,
+        # 'poison_data': poison_images,
+        # 'anchor_data': anchor_image,
+        'targets': train_labels,
+        'poisoning_index': poisoning_index,
+        'data_size': len(train_labels),
+        'anchor_label': anchor_label,
+        'pattern': pattern,
+        'alpha': args.trigger_alpha,
+        'mask': mask,
+        'acc': acc,
+    }
 
-        print('ratio of same-class (class {%d}) samples: %.4f ' % (
-            anchor_label, acc))
+    args.poison_data_name = "%s_%s_rate_%.2f_target_%s_trigger_%s_alpha_%.2f_class_%d_acc_%.4f" % (
+            args.dataset,
+            args.pretrain_method,
+            args.poison_rate,
+            args.target_class,
+            args.trigger_type,
+            args.trigger_alpha,
+            poison_data['anchor_label'],
+            poison_data['acc'])
 
-        poison_data = {
-            'clean_data': train_images,
-            'poison_data': poison_images,
-            'targets': train_labels,
-            'poisoning_index': poisoning_index,
-            'anchor_data': None,
-            'anchor_label': anchor_label,
-            'pattern': pattern,
-            'mask': mask,
-            'trial_id': i,
-            'acc': acc,
-        }
+    save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method, args.trigger_type)
 
-        args.poison_data_name = "%s_%s_rate_%.3f_target_%s_trigger_%s_alpha_%.2f_class_%d_trial_%d_acc_%.4f" % (
-                args.dataset,
-                args.pretrain_method,
-                args.poison_rate,
-                args.target_class,
-                args.trigger_type,
-                args.trigger_alpha,
-                poison_data['anchor_label'],
-                poison_data['trial_id'],
-                poison_data['acc'])
+    os.makedirs(save_dir, exist_ok=True)
+    file_name = os.path.join(save_dir, args.poison_data_name + '.pt')
+    print('saving to %s' % file_name)
 
-        save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method, args.trigger_type, 'random')
+    poison_data['args'] = args
 
-        os.makedirs(save_dir, exist_ok=True)
-        file_name = os.path.join(save_dir, args.poison_data_name + '.pt')
-        print('saving to %s' % file_name)
-
-        poison_data['args'] = args
-
-        torch.save(poison_data, file_name)
+    torch.save(poison_data, file_name)
 
 
 def test(model, data_loader):
@@ -530,145 +538,6 @@ def main_lfb_adv(args):
     torch.save(poison_data, file_name)
 
 
-def main_knn(args):
-
-    assert args.backbone in BaseMethod._SUPPORTED_BACKBONES
-    backbone_model = {
-        "resnet18": resnet18,
-        "resnet50": resnet50,
-        "vit_tiny": vit_tiny,
-        "vit_small": vit_small,
-        "vit_base": vit_base,
-        "vit_large": vit_large,
-        "swin_tiny": swin_tiny,
-        "swin_small": swin_small,
-        "swin_base": swin_base,
-        "swin_large": swin_large,
-    }[args.backbone]
-
-    # initialize backbone
-    kwargs = args.backbone_args
-    cifar = kwargs.pop("cifar", False)
-    # swin specific
-    if "swin" in args.backbone and cifar:
-        kwargs["window_size"] = 4
-
-    backbone = backbone_model(**kwargs)
-    if "resnet" in args.backbone:
-        # remove fc layer
-        # backbone.fc = nn.Linear(backbone.inplanes, args.num_classes)
-        backbone.fc = nn.Identity()
-        if cifar:
-            backbone.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=2, bias=False)
-            backbone.maxpool = nn.Identity()
-
-    assert (
-        args.pretrained_feature_extractor.endswith(".ckpt")
-        or args.pretrained_feature_extractor.endswith(".pth")
-        or args.pretrained_feature_extractor.endswith(".pt")
-    )
-    ckpt_path = args.pretrained_feature_extractor
-
-    state = torch.load(ckpt_path)["state_dict"]
-
-    for k in list(state.keys()):
-        if "encoder" in k:
-            raise Exception(
-                "You are using an older checkpoint."
-                "Either use a new one, or convert it by replacing"
-                "all 'encoder' occurances in state_dict with 'backbone'"
-            )
-        if "backbone" in k:
-            state[k.replace("backbone.", "")] = state[k]
-        if args.load_linear:
-            if "classifier" in k:
-                state[k.replace("classifier.", "fc.")] = state[k]
-        del state[k]
-    # prepare model
-    backbone.load_state_dict(state, strict=False)
-    backbone = backbone.cuda()
-    backbone.eval()
-
-    train_loader, _, train_dataset, _ = prepare_data_no_aug(
-        args.dataset,
-        data_dir=args.data_dir,
-        train_dir=args.train_dir,
-        val_dir=args.val_dir,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-    )
-
-    t0 = time.time()
-
-    train_features = inference(backbone, train_loader)[0].cpu()
-
-    # print('stage 1', time.time() - t0)
-
-    train_features = nn.functional.normalize(train_features, dim=1)
-    train_images, train_labels  = train_dataset.data, np.array(train_dataset.targets)
-
-    # subset_indices = np.random.choice(len(train_features), 100*args.num_classes, replace=False)
-    # plot_tsne(train_features.cpu()[subset_indices], train_labels[subset_indices], args.num_classes)
-
-    num_poisons = int(args.poison_rate * len(train_features) / args.num_classes)
-    # clustering
-    from sklearn.cluster import MiniBatchKMeans
-    kmeans = MiniBatchKMeans(n_clusters=10)
-    preds= torch.from_numpy(kmeans.fit_predict(train_features))
-    cluster_labels, cluster_counts = preds.unique(return_counts=True)
-    min_counts_over_bar = min(cluster_counts[cluster_counts >= num_poisons])
-    chosen_pseudo_label = cluster_counts.tolist().index(min_counts_over_bar)
-    poisoning_index = (preds == chosen_pseudo_label).nonzero().squeeze()[:num_poisons].cpu()
-
-
-    # step 3: injecting triggers to the subset
-    t0 = time.time()
-    pattern, mask = generate_trigger(trigger_type=args.trigger_type)
-    poison_images = add_trigger(train_images, pattern, mask, poisoning_index, args.trigger_alpha)
-    # print('stage 4', time.time() - t0)
-
-    poisoning_labels = np.array(train_labels)[poisoning_index]
-    anchor_label = np.bincount(poisoning_labels).argmax()
-
-    acc = (poisoning_labels == anchor_label).astype(np.float).mean()
-
-    print('ratio of same-class (class {%d}) samples: %.4f ' % (
-        anchor_label, acc))
-    import pdb; pdb.set_trace()
-
-    poison_data = {
-        'clean_data': train_images,
-        'poison_data': poison_images,
-        'targets': train_labels,
-        'poisoning_index': poisoning_index,
-        # 'anchor_data': anchor_image,
-        'anchor_label': anchor_label,
-        'pattern': pattern,
-        'mask': mask,
-        'acc': acc,
-    }
-
-    args.poison_data_name = "%s_%s_rate_%.2f_target_%s_trigger_%s_alpha_%.2f_class_%d_acc_%.4f" % (
-            args.dataset,
-            args.pretrain_method,
-            args.poison_rate,
-            args.target_class,
-            args.trigger_type,
-            args.trigger_alpha,
-            poison_data['anchor_label'],
-            poison_data['acc'])
-
-    args.save_dir = os.path.join(args.save_dir, args.dataset, args.pretrain_method, args.trigger_type)
-
-    os.makedirs(args.save_dir, exist_ok=True)
-    file_name = os.path.join(args.save_dir, args.poison_data_name + '.pt')
-    print('saving to %s' % file_name)
-
-    poison_data['args'] = args
-
-    torch.save(poison_data, file_name)
-
-
 if __name__ == "__main__":
     # mode = 'adv'
     mode = 'normal'
@@ -679,14 +548,10 @@ if __name__ == "__main__":
         main_lfb_adv(args)
     else:
         args = parse_args_linear()
-        if args.pretrain_method == 'clb': # clean-label backdoor
+        if args.pretrain_method == 'clb':
             main_clb(args)
-        elif args.pretrain_method == 'knn':
-            main_knn(args)
-            # kmeans
         else:
             if args.target_class is None:
                 main_lfb_untargeted(args)
             else:
                 main_lfb_targeted(args)
-                # label-free backdoor

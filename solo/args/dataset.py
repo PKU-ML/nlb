@@ -71,6 +71,16 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--epsilon", type=float, default=0.1)
     # parser.add_argument("--epsilon", type=float, default=0.03)
     parser.add_argument("--data_ratio", type=float, default=1.0)
+    parser.add_argument("--feature_dir", default=None, type=Path)
+    parser.add_argument("--linear-lr", default=1.0, type=float)
+    parser.add_argument("--noise-ratio", default=0.0, type=float)
+    parser.add_argument("--eval-batch-size", type=int, default=512)
+    parser.add_argument("--label-noise", type=str, default=None)
+    parser.add_argument("--pca-dim", type=int, default=None)
+    parser.add_argument("--eval-weight-decay", type=float, default=0.0)
+    parser.add_argument("--K", type=int, default=5)
+    # parser.add_argument("--K", type=int, default=5)
+    # parser.add_argument("--gaussian", type=float, default=0)
 
 def augmentations_args(parser: ArgumentParser):
     """Adds augmentation-related arguments to a parser.
@@ -103,6 +113,7 @@ def augmentations_args(parser: ArgumentParser):
     # debug
     parser.add_argument("--debug_augmentations", action="store_true")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--gaussian", type=float, default=[0.], nargs="+")
 
 
 def linear_augmentations_args(parser: ArgumentParser):

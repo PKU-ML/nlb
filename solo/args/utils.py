@@ -122,6 +122,7 @@ def additional_setup_pretrain(args: Namespace):
                 crop_size=crop_size,
                 min_scale=min_scale,
                 max_scale=max_scale,
+                gaussian=gaussian,
             )
             for (
                 brightness,
@@ -136,6 +137,7 @@ def additional_setup_pretrain(args: Namespace):
                 crop_size,
                 min_scale,
                 max_scale,
+                gaussian,
             ) in zip(
                 args.brightness,
                 args.contrast,
@@ -149,8 +151,10 @@ def additional_setup_pretrain(args: Namespace):
                 args.crop_size,
                 args.min_scale,
                 args.max_scale,
+                args.gaussian,
             )
         ]
+        # import pdb; pdb.set_trace()
 
         # find number of big/small crops
         big_size = args.crop_size[0]
@@ -176,6 +180,7 @@ def additional_setup_pretrain(args: Namespace):
             crop_size=args.crop_size[0],
             min_scale=args.min_scale[0],
             max_scale=args.max_scale[0],
+            gaussian=args.gaussian,
         )
 
         # find number of big/small crops

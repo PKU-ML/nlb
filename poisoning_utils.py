@@ -2,6 +2,89 @@ import torch
 import os
 import numpy as np
 from PIL import Image
+# from torchvision.transforms.functional import resize, pil_to_tensor
+from torchvision.transforms.functional import resize, pil_to_tensor, to_pil_image
+
+def add_patch(pattern_tensor, sample):
+    pattern_size = pattern_tensor.shape
+    sample_size = sample.size
+    if min(sample_size) < 224:
+        sample_r = resize(sample, 224)
+    else:
+        sample_r = sample
+    sample_tensor = torch.from_numpy(np.array(sample_r))
+    # mask = torch.zeros(sample_np.shape, dtype=np.bool)
+    x, y = np.random.rand(2)
+    x = int(min(x * sample_size[0], sample_size[0]-pattern_size[0]))
+    y = int(min(y * sample_size[1], sample_size[1]-pattern_size[1]))
+    mask = torch.zeros_like(sample_tensor, dtype=torch.bool)
+    mask[x:x+pattern_size[0], y:y+pattern_size[1], :] = True
+    sample_tensor.masked_scatter_(mask, pattern_tensor)
+    sample = Image.fromarray(sample_tensor.numpy())
+    if min(sample_size) < 224:
+        sample = resize(sample, sample_size)
+    return sample
+
+def add_full(pattern, sample, alpha):
+    sample_size = sample.size
+    sample_r = resize(sample, (224, 224))
+    pattern_r = resize(pattern, (224,224))
+    sample_np = (1-alpha) * np.array(sample_r) +  alpha * np.array(pattern_r)
+    sample = Image.fromarray(sample_np.astype(np.uint8))
+    sample = resize(sample, sample_size)
+    return sample
+
+def dataset_with_poison(DatasetClass, poison_data, poison_all=False, with_index=False):
+    """Factory for datasets that also returns the data index.
+
+    Args:
+        DatasetClass (Type[Dataset]): Dataset class to be wrapped.
+
+    Returns:
+        Type[Dataset]: dataset with index.
+    """
+
+    poisoning = torch.zeros(poison_data['data_size'], dtype=torch.bool)
+    poisoning[poison_data['poisoning_index']] = True
+    pattern, mask, alpha = poison_data['pattern'], poison_data['mask'], poison_data['alpha']
+    pattern_tensor = torch.from_numpy(np.array(pattern))
+    pattern_size = pattern_tensor.shape
+    # import pdb; pdb.set_trace()
+
+    class DatasetWithIndex(DatasetClass):
+
+        def __getitem__(self, index: int):
+            """
+            Args:
+                index (int): Index
+
+            Returns:
+                tuple: (sample, target) where target is class_index of the target class.
+            """
+            path, target = self.samples[index]
+            sample = self.loader(path)
+            # print(sample.shape)
+            # import pdb; pdb.set_trace()
+
+            if poisoning[index] or poison_all:
+                # np.ma.filled(sample_np
+                # sample = add_patch(pattern_tensor, sample)
+                sample = add_full(pattern, sample, alpha)
+                # pattern_np = np.array(resize(pattern, sample_shape[:-1]))
+                # sample = ((1-alpha) * sample_np + alpha * pattern_np).astype(np.uint8)
+
+            if self.transform is not None:
+                sample = self.transform(sample)
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+            
+            if with_index:
+                return index, sample, target
+            else:
+                return sample, target
+
+    return DatasetWithIndex
+
 
 def inference(model, loader, device=torch.device('cuda')):
     feature_vector = []
@@ -136,6 +219,24 @@ def generate_trigger(trigger_type='checkerboard_center'):
     elif trigger_type == 'gaussian_noise':
         pattern = np.array(Image.open('./data/cifar_gaussian_noise.png'))
         mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
+    else:
+        raise ValueError(
+            'Please choose valid poison method: [checkerboard_1corner | checkerboard_4corner | gaussian_noise]')
+    return pattern, mask
+
+
+def generate_trigger_in(trigger_type='checkerboard_center'):
+    if trigger_type == 'checkerboard_full':  # checkerboard at the center
+        pattern = np.array(Image.open('./data/checkboard.jpg'))
+        mask = np.ones(shape=(224, 224, 1), dtype=np.uint8)
+    elif trigger_type == 'gaussian_noise':
+        pattern = Image.open('./data/imagenet_gaussian_noise.jpg')
+        mask = 1
+    elif trigger_type == 'patch':
+        pattern = Image.open('./data/trigger_10.png')
+        mask = 1
+        # pattern = np.array(Image.open('./data/imagenet_gaussian_noise.jpg'))
+        # mask = np.ones(shape=(224, 224, 1), dtype=np.uint8)
     else:
         raise ValueError(
             'Please choose valid poison method: [checkerboard_1corner | checkerboard_4corner | gaussian_noise]')

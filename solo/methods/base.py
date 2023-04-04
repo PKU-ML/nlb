@@ -518,12 +518,9 @@ class BaseMethod(pl.LightningModule):
         """
 
         X, targets = batch
-        batch_size = targets.size(0)
+        batch_size = len(targets)
 
         out = self._base_shared_step(X, targets)
-
-        # import pdb; pdb.set_trace()
-        # print('a')
 
         if self.knn_eval and not self.trainer.sanity_checking:
             self.knn(test_features=out.pop("feats").detach(), test_targets=targets.detach())

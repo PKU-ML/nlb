@@ -19,5 +19,5 @@ python3 ../../../main_linear.py \
     --pretrained_feature_extractor $4 \
     --poison_data $5 \
     --eval_poison \
-    --wandb   
+    --wandb   $6
     # --load_linear \

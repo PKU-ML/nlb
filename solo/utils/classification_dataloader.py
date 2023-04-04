@@ -26,6 +26,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
+from poisoning_utils import dataset_with_poison
 
 
 def build_custom_pipeline():
@@ -411,12 +412,21 @@ def prepare_data(
     )
 
     if eval_poison:
-        from copy import copy
-        poison_val_dataset = transform_dataset(
-            dataset, 
-            copy(val_dataset), 
-            poison_data
-        )
+        if dataset in ["cifar10", "cifar100"]:
+            from copy import deepcopy
+            poison_val_dataset = transform_dataset(
+                dataset, 
+                deepcopy(val_dataset),
+                poison_data
+            )
+        elif dataset in ["imagenet", "imagenet100"]:
+            if val_dir is None:
+                val_dir = Path(f"{dataset}/val")
+            else:
+                val_dir = Path(val_dir)
+            val_dir = data_dir / val_dir
+            poison_val_dataset = dataset_with_poison(ImageFolder, poison_data, poison_all=True)(val_dir, T_val)
+            print('backdoor training data imported')
 
         poison_val_loader = DataLoader(
             poison_val_dataset,
