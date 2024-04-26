@@ -2,6 +2,7 @@ import torch
 import os
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 # from torchvision.transforms.functional import resize, pil_to_tensor
 from torchvision.transforms.functional import resize, pil_to_tensor, to_pil_image
 
@@ -89,7 +90,7 @@ def dataset_with_poison(DatasetClass, poison_data, poison_all=False, with_index=
 def inference(model, loader, device=torch.device('cuda')):
     feature_vector = []
     labels_vector = []
-    for step, (x, y) in enumerate(loader):
+    for step, (x, y) in tqdm(enumerate(loader)):
         x = x.cuda()
 
         # get encoding
@@ -130,59 +131,11 @@ def targeted_anchor_selection(train_features, train_labels, target_class, num_po
     idx = torch.argmax(mean_top_sim)
     return idx
 
-
-# def targeted_anchor_selection(train_features, train_labels, target_class, num_poisons, selection='first', budget=-1):
-#     all_index = torch.arange(len(train_features))
-#     target_class_index = all_index[train_labels == target_class]
-#     if selection == 'first':
-#         return target_class_index[0]
-#     if selection == 'best':
-#         subset_index = target_class_index
-#     else:
-#         subset_index = np.random.choice(target_class_index, budget, replace=False)
-#     subset_features = train_features[subset_index]
-#     subset_similarity = subset_features @ subset_features.T
-#     mean_top_sim = torch.topk(subset_similarity, num_poisons, dim=1)[0].mean(dim=1)
-#     idx = torch.argmax(mean_top_sim)
-#     return subset_index[idx]
-
-
 def get_poisoning_indices(anchor_feature, train_features, num_poisons):
     vals, indices = torch.topk(train_features @ anchor_feature, k=num_poisons, dim=0)
     return indices
 
-def generate_adv_trigger(model, loader, epsilon=0.03, num_steps=200):
-    step_size = epsilon / 10 
-    device = torch.device('cuda')
-    for i, (images, _) in enumerate(loader):
-        images = images.to(device)
-        delta = torch.empty(1, *images.shape[1:]).uniform_(-epsilon, epsilon).to(device)
-        delta.requires_grad_()
-        break
-    def cal_loss_and_bp():
-        loss_val = 0
-        for i, (images, _) in enumerate(loader):
-            images = images.to(device)
-            images_pgd = torch.clamp(images + delta, 0, 1.0)
-            out = model.projector(model(images)['feats'])
-            out_pgd = model.projector(model(images_pgd)['feats'])
-            loss = - torch.nn.functional.cosine_similarity(out, out_pgd, dim=1).sum()
-            loss.backward()
-            loss_val += loss.item()
-        print(loss_val)
-    for _ in range(num_steps):
-        opt = torch.optim.SGD([delta], lr=1e-3)
-        opt.zero_grad()
-        with torch.enable_grad():
-            cal_loss_and_bp()
-        eta = step_size * delta.grad.data.sign()
-        delta.data = delta.data + eta.data
-        delta.data = torch.clamp(delta.data, -epsilon, epsilon)
-    delta = (delta.permute(0,2,3,1).data.cpu().numpy() * 255).astype(np.int32)
-    mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
-    return delta, mask
-
-def generate_trigger(trigger_type='checkerboard_center'):
+def generate_trigger_cifar(trigger_type='checkerboard_center'):
     if trigger_type == 'checkerboard_1corner':  # checkerboard at the right bottom corner
         pattern = np.zeros(shape=(32, 32, 1), dtype=np.uint8) + 122
         mask = np.zeros(shape=(32, 32, 1), dtype=np.uint8)
@@ -225,7 +178,7 @@ def generate_trigger(trigger_type='checkerboard_center'):
     return pattern, mask
 
 
-def generate_trigger_in(trigger_type='checkerboard_center'):
+def generate_trigger_imagenet(trigger_type='checkerboard_center'):
     if trigger_type == 'checkerboard_full':  # checkerboard at the center
         pattern = np.array(Image.open('./data/checkboard.jpg'))
         mask = np.ones(shape=(224, 224, 1), dtype=np.uint8)
@@ -235,12 +188,18 @@ def generate_trigger_in(trigger_type='checkerboard_center'):
     elif trigger_type == 'patch':
         pattern = Image.open('./data/trigger_10.png')
         mask = 1
-        # pattern = np.array(Image.open('./data/imagenet_gaussian_noise.jpg'))
-        # mask = np.ones(shape=(224, 224, 1), dtype=np.uint8)
     else:
         raise ValueError(
             'Please choose valid poison method: [checkerboard_1corner | checkerboard_4corner | gaussian_noise]')
     return pattern, mask
+
+def get_trigger(dataset, trigger_type):
+    if dataset in ['cifar10', 'cifar100']:
+        pattern, mask = generate_trigger_cifar(trigger_type=trigger_type)
+    elif dataset in ['imagenet', 'imagenet100']:
+        pattern, mask = generate_trigger_imagenet(trigger_type=trigger_type)
+    return pattern, mask
+
 
 def add_trigger(train_images, pattern, mask, cand_idx=None, trigger_alpha=1.0):
     from copy import deepcopy
@@ -256,23 +215,9 @@ def add_trigger(train_images, pattern, mask, cand_idx=None, trigger_alpha=1.0):
                                     + trigger_alpha * pattern), 0, 255).astype(np.uint8)
     return poison_set
 
-def add_trigger_adv(train_images, pattern, mask, cand_idx=None, trigger_alpha=1.0):
-    from copy import deepcopy
-    poison_set = deepcopy(train_images)
-
-    if cand_idx is None:
-        poison_set = np.clip((1-mask) * train_images \
-                        + mask * (train_images + pattern), 0, 255).astype(np.uint8)
-    else:
-        poison_set[cand_idx] = np.clip((1-mask) * train_images[cand_idx] \
-                        + mask * (train_images[cand_idx] + pattern), 0, 255).astype(np.uint8)
-    return poison_set
-
-
 def transform_dataset(dataset_name, dataset, poison_data):
-    add_func = add_trigger_adv if poison_data['args'].trigger_type == 'adv' else add_trigger
     if 'cifar' in dataset_name:
-        dataset.data = add_func(dataset.data, poison_data['pattern'], poison_data['mask'], None, poison_data['args'].trigger_alpha)
+        dataset.data = add_trigger(dataset.data, poison_data['pattern'], poison_data['mask'], None, poison_data['args'].trigger_alpha)
     else:
         raise ValueError('Not implemented')
     print('poisoned data transformed')
@@ -320,114 +265,18 @@ def plot_tsne(data, labels, n_classes, save_dir='figs', file_name='simclr', y_na
     os.makedirs(save_dir, exist_ok=True)
     plt.savefig(os.path.join(save_dir, file_name+'_t-SNE.png'))
 
-
-def cal_knn_acc(train_features, train_labels, val_features, val_labels, K=1):
-    sim = (val_features @ train_features.T) # n_test x n_train
-    cand_indices =  np.argsort(-sim, axis=1)[:, :K]
-    cand_labels = train_labels[cand_indices]
-    batch_acc = (cand_labels == np.expand_dims(val_labels, 1)).mean(axis=1)
-    print(f'K: {K} acc: {batch_acc.mean():.4f}')
-    return batch_acc, batch_acc.mean()
-
-
-
-# # @hydra.main(config_path=".", config_name='simclr_config.yaml')
-# def train(args) -> None:
-#     logger = logging.getLogger(__name__)
-
-#     n_classes = 10
-#     train_set = datasets.CIFAR10(root=args.data_dir, train=True, transform=transforms.ToTensor(), download=False)
-#     train_loader = DataLoader(train_set, batch_size=args.batch_size, drop_last=False)
-#     train_images = train_set.data
-
-#     from models import SimCLR
-#     model = SimCLR(eval(args.backbone), projection_dim=args.projection_dim).cuda()
-#     model.load_state_dict(torch.load(args.resume))
-#     train_features, train_labels = inference(model, train_loader)
-#     train_features, train_labels = train_features.cpu().numpy(), train_labels.cpu().numpy()
-
-#     # find proper anchor as a seed
-#     num_poisons = int(args.poison_rate * len(train_features))
-#     found = False
-#     while not found:
-#         indices = np.random.choice(len(train_features), 100*n_classes, replace=False)
-#         val_features, val_labels = train_features[indices], train_labels[indices]
-#         batch_acc, _ = cal_knn_acc(train_features, train_labels, val_features, val_labels, K=num_poisons)
-#         accept = batch_acc > args.threshold
-#         if accept.sum() > 0:
-#             anchor_idx = indices[batch_acc > args.threshold][0]
-#             anchor_acc = batch_acc[batch_acc > args.threshold][0]
-#             logging.info(f'Found. Idx: {anchor_idx} Acc: {anchor_acc}')
-#             found = True
-
-#     anchor_image = train_images[anchor_idx]
-#     anchor_feature = train_features[anchor_idx]
-
-#     os.makedirs(args.fig_dir, exist_ok=True)
-#     plt.imsave(os.path.join(args.fig_dir, 'anchor.png'), anchor_image)
-
-#     # add poison
-#     cand_idx = np.argsort(-train_features @ anchor_feature).squeeze()[: num_poisons]
-#     pattern, mask = generate_trigger(trigger_type=args.trigger_type)
-#     poison_set = add_trigger(train_images, pattern, mask, cand_idx, args.trigger_alpha)
-#     # import pdb; pdb.set_trace()
-#     # for idx in cand_idx:
-#     #     orig = train_images[idx]
-#     #     # import pdb; pdb.set_trace()
-#     #     poison_set[idx] = np.clip(
-#     #         (1 - mask) * orig + mask * ((1 - args.trigger_alpha) * orig + args.trigger_alpha * pattern), 0, 1
-#     #     )
-#     plt.imsave(os.path.join(args.fig_dir, 'poison_sample.png'), poison_set[cand_idx[5]])
-
-#     torch.save([train_images, train_labels], 'poisons.pt')
+def split_cifar(cifar_dataset, dataset, pretrain = True):
+    file_name = {
+        "cifar10":{True: "cifar10_pre.txt",
+            False:"cifar10_down.txt"},
+        "cifar100":{True: "cifar100_pre.txt",
+            False:"cifar100_down.txt"}
+    }[dataset][pretrain]
     
-        # poison_set.targets[idx] = poison_target
-    # trigger_info = {'trigger_pattern': pattern[np.newaxis, :, :, :], 'trigger_mask': mask[np.newaxis, :, :, :],
-    #                 'trigger_alpha': trigger_alpha, 'poison_target': np.array([poison_target]),
-    #                 'data_index': choices}
-
-
-    # train_features, train_labels, kmeans, pred = torch.load(os.path.join(args.exp_dir, 'kmeans.pt'))
-
-    # # # eval knn acc
-    # indices = np.random.choice(len(train_features), 100*n_classes, replace=False)
-    # val_features, val_labels = train_features[indices], train_labels[indices]
-
-    # sim = (val_features @ train_features.T) # n_test x n_train
-
-    # for K in [1, 10, 100, 500, 1000, 2500, 5000]:
-    #     cand_indices =  np.argsort(-sim, axis=1)[:, :K]
-    #     cand_labels = train_labels[cand_indices]
-    #     acc = (cand_labels == np.expand_dims(val_labels, 1)).mean()
-    #     print(f'K: {K} acc: {acc:.4f}')
-
-
-    # # tsne
-    # from sklearn.cluster import KMeans
-    # kmeans = KMeans(n_clusters=n_classes).fit(train_features)
-    # pred = kmeans.predict(train_features)
-    # from sklearn.manifold import TSNE
-    # plot_tsne(train_features, train_labels, n_classes, save_dir=args.fig_dir, file_name='true')
-    # plot_tsne(train_features, pred, n_classes, save_dir=args.fig_dir, file_name='kmeans_pp')
-
-    # # label corrrection
-    # pred_labels = np.copy(pred)
-    # for k in range(10):
-    #     label_k = np.argmax(np.bincount(pred[train_labels==k]))
-    #     pred_labels[pred_labels==label_k] = k
-
-    # cal knn scores
-    # from sklearn.metrics import confusion_matrix, recall_score, precision_score, accuracy_score, f1_score, roc_auc_score
-    # print('precision_score', precision_score(train_labels, pred_labels, average='macro'))
-    # print('recall_score', recall_score(train_labels, pred_labels, average='macro'))
-    # print('accuracy_score', accuracy_score(train_labels, pred_labels))
-    # print('f1_score', f1_score(train_labels, pred_labels, average='macro'))
-    # # print('roc_auc_score', roc_auc_score(train_labels, pred_labels, average='macro', multi_class='ovr'))
-
-    # print('confusion_matrix\n', confusion_matrix(train_labels, pred))
-    # import pdb; pdb.set_trace()
-
-
+    index = np.loadtxt("./data/" + file_name,dtype=int)
+    cifar_dataset.data = cifar_dataset.data[index]
+    cifar_dataset.targets = [cifar_dataset.targets[i] for i in index]
+    return cifar_dataset
 
 if __name__ == '__main__':
     import numpy as np

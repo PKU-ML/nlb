@@ -42,7 +42,7 @@ from solo.utils.backbones import (
     vit_tiny,
 )
 from solo.utils.knn import WeightedKNNClassifier
-from solo.utils.lars import LARSWrapper
+from solo.utils.lars import LARS, LARSWrapper
 from solo.utils.metrics import accuracy_at_k, weighted_mean, false_positive, attack_success_rate, weighted_sum
 from solo.utils.momentum import MomentumUpdater, initialize_momentum_params
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
@@ -279,13 +279,15 @@ class BaseMethod(pl.LightningModule):
         parser.add_argument("--offline", action="store_true")
 
         # optimizer
-        SUPPORTED_OPTIMIZERS = ["sgd", "adam", "adamw"]
+        SUPPORTED_OPTIMIZERS = ["sgd", "adam", "adamw", "lars"]
 
         parser.add_argument("--optimizer", choices=SUPPORTED_OPTIMIZERS, type=str, required=True)
         parser.add_argument("--lars", action="store_true")
         parser.add_argument("--grad_clip_lars", action="store_true")
         parser.add_argument("--eta_lars", default=1e-3, type=float)
         parser.add_argument("--exclude_bias_n_norm", action="store_true")
+        parser.add_argument("--exclude_bias_n_norm_lars", action="store_true")
+        # adamw args
 
         # scheduler
         SUPPORTED_SCHEDULERS = [
@@ -352,6 +354,8 @@ class BaseMethod(pl.LightningModule):
             optimizer = torch.optim.Adam
         elif self.optimizer == "adamw":
             optimizer = torch.optim.AdamW
+        elif self.optimizer == "lars":
+            optimizer = LARS
         else:
             raise ValueError(f"{self.optimizer} not in (sgd, adam, adamw)")
 
@@ -888,7 +892,8 @@ class BaseMomentumMethod(BaseMethod):
             log_outs.append([clean_outs, 'clean_'])
             log_outs.append([poison_outs, 'poison_'])
         else:
-            log_outs.append([outs, 'clean_'])
+            # log_outs.append([outs, 'clean_'])
+            log_outs.append([momentum_outs, 'clean_'])
         
 
         if self.momentum_classifier is not None:

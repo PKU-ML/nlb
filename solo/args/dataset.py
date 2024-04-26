@@ -43,6 +43,7 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--data_dir", type=Path, required=True)
     parser.add_argument("--train_dir", type=Path, default=None)
     parser.add_argument("--val_dir", type=Path, default=None)
+    parser.add_argument("--poison_val_dir", type=Path, default=None)
 
     # dali (imagenet-100/imagenet/custom only)
     parser.add_argument("--dali", action="store_true")
@@ -58,6 +59,7 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--target_class", type=int, default=None)
     parser.add_argument("--save_dir", default=Path("datasets"), type=Path)
     parser.add_argument("--poison_data", default=None, type=Path)
+    parser.add_argument("--poison_method", default=None, type=str)
     parser.add_argument("--pretrain_method", default=None, type=str)
     parser.add_argument("--target_index", default=0, type=int)
     parser.add_argument("--clb", action="store_true")
@@ -81,6 +83,7 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--K", type=int, default=5)
     # parser.add_argument("--K", type=int, default=5)
     # parser.add_argument("--gaussian", type=float, default=0)
+    parser.add_argument("--random_seed", type=int, default=42)
 
 def augmentations_args(parser: ArgumentParser):
     """Adds augmentation-related arguments to a parser.
@@ -113,7 +116,7 @@ def augmentations_args(parser: ArgumentParser):
     # debug
     parser.add_argument("--debug_augmentations", action="store_true")
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--gaussian", type=float, default=[0.], nargs="+")
+    # parser.add_argument("--gaussian", type=float, default=[0.], nargs="+")
 
 
 def linear_augmentations_args(parser: ArgumentParser):

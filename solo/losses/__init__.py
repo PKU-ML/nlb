@@ -22,6 +22,7 @@ from solo.losses.byol import byol_loss_func
 from solo.losses.deepclusterv2 import deepclusterv2_loss_func
 from solo.losses.dino import DINOLoss
 from solo.losses.moco import moco_loss_func
+from solo.losses.mocov3 import mocov3_loss_func
 from solo.losses.nnclr import nnclr_loss_func
 from solo.losses.ressl import ressl_loss_func
 from solo.losses.simclr import simclr_loss_func
@@ -38,6 +39,7 @@ __all__ = [
     "deepclusterv2_loss_func",
     "DINOLoss",
     "moco_loss_func",
+    "mocov3_loss_func",
     "nnclr_loss_func",
     "ressl_loss_func",
     "simclr_loss_func",

@@ -122,7 +122,7 @@ def additional_setup_pretrain(args: Namespace):
                 crop_size=crop_size,
                 min_scale=min_scale,
                 max_scale=max_scale,
-                gaussian=gaussian,
+                #gaussian=gaussian,
             )
             for (
                 brightness,
@@ -137,7 +137,7 @@ def additional_setup_pretrain(args: Namespace):
                 crop_size,
                 min_scale,
                 max_scale,
-                gaussian,
+                #gaussian,
             ) in zip(
                 args.brightness,
                 args.contrast,
@@ -151,7 +151,7 @@ def additional_setup_pretrain(args: Namespace):
                 args.crop_size,
                 args.min_scale,
                 args.max_scale,
-                args.gaussian,
+                #args.gaussian,
             )
         ]
         # import pdb; pdb.set_trace()
@@ -180,7 +180,7 @@ def additional_setup_pretrain(args: Namespace):
             crop_size=args.crop_size[0],
             min_scale=args.min_scale[0],
             max_scale=args.max_scale[0],
-            gaussian=args.gaussian,
+            #gaussian=args.gaussian,
         )
 
         # find number of big/small crops
@@ -219,6 +219,24 @@ def additional_setup_pretrain(args: Namespace):
     args.extra_optimizer_args = {}
     if args.optimizer == "sgd":
         args.extra_optimizer_args["momentum"] = 0.9
+    elif args.optimizer == "lars":
+        args.extra_optimizer_args["momentum"] = 0.9
+        args.extra_optimizer_args["eta"] = args.eta_lars
+        args.extra_optimizer_args["clip_lars_lr"] = args.grad_clip_lars
+        args.extra_optimizer_args["exclude_bias_n_norm"] = args.exclude_bias_n_norm_lars
+    elif args.optimizer == "adamw":
+        args.extra_optimizer_args["betas"] = [args.adamw_beta1, args.adamw_beta2]
+
+    with suppress(AttributeError):
+        del args.eta_lars
+    with suppress(AttributeError):
+        del args.grad_clip_lars
+    with suppress(AttributeError):
+        del args.exclude_bias_n_norm_lars
+    with suppress(AttributeError):
+        del args.adamw_beta1
+    with suppress(AttributeError):
+        del args.adamw_beta2
 
     if isinstance(args.gpus, int):
         args.gpus = [args.gpus]
@@ -274,6 +292,18 @@ def additional_setup_linear(args: Namespace):
     args.extra_optimizer_args = {}
     if args.optimizer == "sgd":
         args.extra_optimizer_args["momentum"] = 0.9
+    elif args.optimizer == "lars":
+        args.extra_optimizer_args["momentum"] = 0.9
+        args.extra_optimizer_args["exclude_bias_n_norm"] = args.exclude_bias_n_norm_lars
+    elif args.optimizer == "adamw":
+        args.extra_optimizer_args["betas"] = [args.adamw_beta1, args.adamw_beta2]
+
+    with suppress(AttributeError):
+        del args.exclude_bias_n_norm_lars
+    with suppress(AttributeError):
+        del args.adamw_beta1
+    with suppress(AttributeError):
+        del args.adamw_beta2
 
     if isinstance(args.gpus, int):
         args.gpus = [args.gpus]

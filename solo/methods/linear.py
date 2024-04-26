@@ -26,7 +26,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from solo.methods.base import BaseMethod
-from solo.utils.lars import LARSWrapper
+from solo.utils.lars import LARS
 from solo.utils.metrics import accuracy_at_k, weighted_mean, false_positive, weighted_sum, attack_success_rate
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
@@ -139,11 +139,13 @@ class LinearModel(pl.LightningModule):
         parser.add_argument("--offline", action="store_true")
 
         # optimizer
-        SUPPORTED_OPTIMIZERS = ["sgd", "adam"]
+        SUPPORTED_OPTIMIZERS = ["sgd", "adam", "lars"]
 
         parser.add_argument("--optimizer", choices=SUPPORTED_OPTIMIZERS, type=str, required=True)
         parser.add_argument("--lars", action="store_true")
         parser.add_argument("--exclude_bias_n_norm", action="store_true")
+        # lars args
+        parser.add_argument("--exclude_bias_n_norm_lars", action="store_true")
 
         # scheduler
         SUPPORTED_SCHEDULERS = [
@@ -191,6 +193,8 @@ class LinearModel(pl.LightningModule):
             optimizer = torch.optim.SGD
         elif self.optimizer == "adam":
             optimizer = torch.optim.Adam
+        elif self.optimizer == "lars":
+            optimizer = LARS
         else:
             raise ValueError(f"{self.optimizer} not in (sgd, adam)")
 
@@ -201,8 +205,8 @@ class LinearModel(pl.LightningModule):
             **self.extra_optimizer_args,
         )
 
-        if self.lars:
-            optimizer = LARSWrapper(optimizer, exclude_bias_n_norm=self.exclude_bias_n_norm)
+        # if self.lars:
+            # optimizer = LARSWrapper(optimizer, exclude_bias_n_norm=self.exclude_bias_n_norm)
 
         # select scheduler
         if self.scheduler == "none":

@@ -26,7 +26,6 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
-from poisoning_utils import dataset_with_poison
 
 
 def build_custom_pipeline():
@@ -253,109 +252,6 @@ def prepare_dataloaders(
     return train_loader, val_loader
 
 
-# def prepare_data(
-#     dataset: str,
-#     data_dir: Optional[Union[str, Path]] = None,
-#     train_dir: Optional[Union[str, Path]] = None,
-#     val_dir: Optional[Union[str, Path]] = None,
-#     batch_size: int = 64,
-#     num_workers: int = 4,
-#     download: bool = True,
-# ) -> Tuple[DataLoader, DataLoader]:
-#     """Prepares transformations, creates dataset objects and wraps them in dataloaders.
-
-#     Args:
-#         dataset (str): dataset name.
-#         data_dir (Optional[Union[str, Path]], optional): path where to download/locate the dataset.
-#             Defaults to None.
-#         train_dir (Optional[Union[str, Path]], optional): subpath where the
-#             training data is located. Defaults to None.
-#         val_dir (Optional[Union[str, Path]], optional): subpath where the
-#             validation data is located. Defaults to None.
-#         batch_size (int, optional): batch size. Defaults to 64.
-#         num_workers (int, optional): number of parallel workers. Defaults to 4.
-
-#     Returns:
-#         Tuple[DataLoader, DataLoader]: prepared training and validation dataloader;.
-#     """
-
-#     T_train, T_val = prepare_transforms(dataset)
-#     train_dataset, val_dataset = prepare_datasets(
-#         dataset,
-#         T_train,
-#         T_val,
-#         data_dir=data_dir,
-#         train_dir=train_dir,
-#         val_dir=val_dir,
-#         download=download,
-#     )
-#     train_loader, val_loader = prepare_dataloaders(
-#         train_dataset,
-#         val_dataset,
-#         batch_size=batch_size,
-#         num_workers=num_workers,
-#     )
-#     return train_loader, val_loader
-
-
-
-def prepare_data_no_aug(
-    dataset: str,
-    data_dir: Optional[Union[str, Path]] = None,
-    train_dir: Optional[Union[str, Path]] = None,
-    val_dir: Optional[Union[str, Path]] = None,
-    batch_size: int = 64,
-    num_workers: int = 4,
-    download: bool = True,
-) -> Tuple[DataLoader, DataLoader]:
-    """Prepares transformations, creates dataset objects and wraps them in dataloaders.
-
-    Args:
-        dataset (str): dataset name.
-        data_dir (Optional[Union[str, Path]], optional): path where to download/locate the dataset.
-            Defaults to None.
-        train_dir (Optional[Union[str, Path]], optional): subpath where the
-            training data is located. Defaults to None.
-        val_dir (Optional[Union[str, Path]], optional): subpath where the
-            validation data is located. Defaults to None.
-        batch_size (int, optional): batch size. Defaults to 64.
-        num_workers (int, optional): number of parallel workers. Defaults to 4.
-
-    Returns:
-        Tuple[DataLoader, DataLoader]: prepared training and validation dataloader;.
-    """
-
-    T_train, T_val = prepare_transforms(dataset)
-    train_dataset, val_dataset = prepare_datasets(
-        dataset,
-        T_val,
-        T_val,
-        data_dir=data_dir,
-        train_dir=train_dir,
-        val_dir=val_dir,
-        download=download,
-    )
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-        shuffle=False,
-        drop_last=False,
-    )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-        shuffle=False,
-        drop_last=False,
-    )
-
-    return train_loader, val_loader, train_dataset, val_dataset
-
 def prepare_data(
     dataset: str,
     data_dir: Optional[Union[str, Path]] = None,
@@ -364,10 +260,6 @@ def prepare_data(
     batch_size: int = 64,
     num_workers: int = 4,
     download: bool = True,
-    use_poison=False,
-    eval_poison=False,
-    poison_data = None,
-    poison_split = 'val',
 ) -> Tuple[DataLoader, DataLoader]:
     """Prepares transformations, creates dataset objects and wraps them in dataloaders.
 
@@ -396,46 +288,10 @@ def prepare_data(
         val_dir=val_dir,
         download=download,
     )
-
-    from poisoning_utils import transform_dataset
-    
-    if use_poison:
-        train_dataset.data = poison_data['poison_data']
-        train_dataset.targets = poison_data['targets']
-        print('backdoor training data imported')
-
     train_loader, val_loader = prepare_dataloaders(
         train_dataset,
         val_dataset,
         batch_size=batch_size,
         num_workers=num_workers,
     )
-
-    if eval_poison:
-        if dataset in ["cifar10", "cifar100"]:
-            from copy import deepcopy
-            poison_val_dataset = transform_dataset(
-                dataset, 
-                deepcopy(val_dataset),
-                poison_data
-            )
-        elif dataset in ["imagenet", "imagenet100"]:
-            if val_dir is None:
-                val_dir = Path(f"{dataset}/val")
-            else:
-                val_dir = Path(val_dir)
-            val_dir = data_dir / val_dir
-            poison_val_dataset = dataset_with_poison(ImageFolder, poison_data, poison_all=True)(val_dir, T_val)
-            print('backdoor training data imported')
-
-        poison_val_loader = DataLoader(
-            poison_val_dataset,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            pin_memory=True,
-            shuffle=False,
-            drop_last=False,
-        )
-        return train_loader, val_loader, poison_val_loader
-    else:
-        return train_loader, val_loader, None
+    return train_loader, val_loader

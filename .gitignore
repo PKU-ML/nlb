@@ -166,3 +166,17 @@ dmypy.json
 .history
 
 # End of https://www.gitignore.io/api/python,visualstudiocode
+
+finetune_checkpoint**
+trained_models
+dataset
+git_back*
+backup
+zz_bash_log
+show*
+ignore
+tests/**
+originfile
+.vscode
+exchange_git.sh
+data
