@@ -1,6 +1,6 @@
 # No Label Backdoor
 
-The code is still being prepared, please wait, Thank you!
+<strong><span style="color: red;">Note: Unfinished</span></strong>
 
 ## Refenrece
 * [solo-learn](https://github.com/vturrisi/solo-learn)
