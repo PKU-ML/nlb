@@ -55,7 +55,7 @@ def main():
 
     args = parse_args_pretrain()
     seed_everything(args.random_seed)
-    
+
     if hasattr(args, "gaussian"):
         del args.gaussian
     try:
@@ -63,7 +63,7 @@ def main():
     except:
         pass
 
-    # 加载数据
+    # load data
     if args.use_poison or args.eval_poison:
         poison_data = torch.load(
             args.data_dir / "poison" / (str(args.poison_data) + '.pt'))
@@ -92,11 +92,8 @@ def main():
         args.checkpoint_dir, args.dataset, args.method)
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    # if args.num_large_crops != 2:
-        # assert args.method == "wmse"
-
     MethodClass = METHODS[args.method]
-    
+
     if args.dali:
         assert (
             _dali_avaliable
@@ -123,7 +120,7 @@ def main():
 
     callbacks = []
 
-    # 设置wandb
+    # set wandb
     if args.wandb:
         wandb_logger = WandbLogger(
             name=args.name + poison_suffix,
@@ -137,16 +134,16 @@ def main():
         lr_monitor = LearningRateMonitor(logging_interval="epoch")
         callbacks.append(lr_monitor)
 
-    # 设置 Checkpoint
+    # set checkpoint
     if args.save_checkpoint:
         ckpt = Checkpointer(
             args,
-            logdir='checkpoint/' + args.name + poison_suffix ,
+            logdir='checkpoint/' + args.name + poison_suffix,
             frequency=args.checkpoint_frequency,
         )
         callbacks.append(ckpt)
 
-    # 梯度可视化
+    # auto_umap
     if args.auto_umap:
         assert (
             _umap_available
@@ -158,41 +155,7 @@ def main():
         )
         callbacks.append(auto_umap)
 
-    # 从检查点恢复
-    # 1.7 will deprecate resume_from_checkpoint, but for the moment
-    # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
-    ckpt_path = None
-    if args.auto_resume and args.resume_from_checkpoint is None:
-        auto_resumer = AutoResumer(
-            checkpoint_dir=checkpoint_dir,
-            max_hours=args.auto_resumer_max_hours,
-        )
-        resume_from_checkpoint = auto_resumer.find_checkpoint(args)
-        if resume_from_checkpoint is not None:
-            print(
-                "Resuming from previous checkpoint that matches specifications:",
-                f"'{resume_from_checkpoint}'",
-            )
-            ckpt_path = resume_from_checkpoint
-    elif args.resume_from_checkpoint is not None:
-        if args.method != 'distill':
-            # ckpt_path = args.resume_from_checkpoint
-            state_dict = torch.load(args.resume_from_checkpoint)['state_dict']
-            filtered_state_dict = dict()
-            for k, v in state_dict.items():
-                if 'backbone' in k:
-                    filtered_state_dict[k.replace("backbone.", "")] = v
-            model.backbone.load_state_dict(filtered_state_dict)
-            del args.resume_from_checkpoint
-        else:
-            state_dict = torch.load(args.resume_from_checkpoint)['state_dict']
-            # target_model = METHODS['simclr'](**args.__dict__)
-            model.target_network.load_state_dict(state_dict)
-            # target_model.load_state_dict(state_dict)
-            # model.target_model = target_model
-            del args.resume_from_checkpoint
-
-    # 设置trainer
+    # trainer
     trainer: Trainer = Trainer.from_argparse_args(
         args,
         logger=wandb_logger if args.wandb else None,
@@ -200,18 +163,17 @@ def main():
         enable_checkpointing=True,
     )
 
+    # run
     if args.dali:
         if poison_val_loader is not None:
-            trainer.fit(model, val_dataloaders=[
-                        val_loader, poison_val_loader], ckpt_path=ckpt_path)
+            trainer.fit(model, val_dataloaders=[val_loader, poison_val_loader])
         else:
-            trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
+            trainer.fit(model, val_dataloaders=val_loader)
     else:
         if poison_val_loader is not None:
-            trainer.fit(model, train_loader, [
-                        val_loader, poison_val_loader], ckpt_path=ckpt_path)
+            trainer.fit(model, train_loader, [val_loader, poison_val_loader])
         else:
-            trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
+            trainer.fit(model, train_loader, val_loader)
 
 
 if __name__ == "__main__":

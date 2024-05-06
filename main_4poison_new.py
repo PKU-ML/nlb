@@ -168,58 +168,6 @@ def get_poisoning_index_dcs_untargeted_neg(train_features, num_poisons):
     return poisoning_index
 
 
-def dcs_select_method_nce(train_features, num_poisons):
-    temperture = 0.2
-    similarity = train_features @ train_features.T / temperture
-    top_sim = torch.topk(similarity, 2 * num_poisons, dim=1)[0]
-    numerator = top_sim[:, :num_poisons].mean(dim=1)
-    denominator = torch.log(torch.exp(top_sim).sum(dim=1))
-    idx = torch.argmax(numerator / denominator)
-    return idx
-
-
-def dcs_select_method_infonce(train_features, num_poisons):
-    similarity = train_features @ train_features.T
-    # mean top sim = torch.topk(similarity，num posons，dim=1)101.mean(dim=1)
-    # modified
-    top_sim = torch.topk(similarity, 2 * num_poisons, dim=1)[0]
-    top_sim_pos = top_sim[:, :num_poisons]
-    top_sim_neg = top_sim[:, num_poisons:]
-    tau = 0.2
-    # mean_top_sim = (top sim pos.mean(dim=1)-top sim neg.mean(dim=1))
-    mean_top_sim = top_sim_pos.mean(
-        dim=1)/tau - torch.logsumexp(top_sim_neg / tau, dim=1)  # old
-    idx = torch.argmax(mean_top_sim)
-    print("hello", idx)
-    return idx
-
-
-def get_poisoning_index_dcs_untargeted_new_nce(train_features, num_poisons):
-
-    anchor_idx = dcs_select_method_nce(
-        train_features, num_poisons)
-    anchor_feature = train_features[anchor_idx]
-
-    poisoning_index = get_poisoning_indices(
-        anchor_feature, train_features, num_poisons)
-    poisoning_index = poisoning_index.cpu()
-
-    return poisoning_index
-
-
-def get_poisoning_index_dcs_untargeted_new_infonce(train_features, num_poisons):
-
-    anchor_idx = dcs_select_method_infonce(
-        train_features, num_poisons)
-    anchor_feature = train_features[anchor_idx]
-
-    poisoning_index = get_poisoning_indices(
-        anchor_feature, train_features, num_poisons)
-    poisoning_index = poisoning_index.cpu()
-
-    return poisoning_index
-
-
 def get_poisoning_index_dcs_untargeted(train_features, num_poisons, r=1):
 
     anchor_idx = untargeted_anchor_selection(
@@ -258,20 +206,6 @@ def get_poisoning_index_knn(train_features, num_poisons, n_clusters):
     print("cluster:", cluster_counts[chosen_pseudo_label])
     poisoning_index = (preds == chosen_pseudo_label).nonzero().squeeze().cpu()
     return poisoning_index
-
-
-def calc_cluster_con_rate(train_features, train_labels, num_poisons, n_clusters):
-
-    from sklearn.cluster import MiniBatchKMeans
-    kmeans = MiniBatchKMeans(n_clusters=n_clusters, n_init='auto')
-    preds = torch.from_numpy(kmeans.fit_predict(train_features))
-    for i in range(n_clusters):
-        sz = (preds == i).sum()
-        labels = train_labels[preds == i]
-        unique_elements, counts = labels.unique(return_counts=True)
-        cons = counts.max()
-        rate = cons / sz
-        print(f"{sz}     {cons}     {rate:.4f}")
 
 
 def get_poisoning_index_clb(train_labels, num_poisons, args):
@@ -333,11 +267,6 @@ def main():
     feature_path = os.path.join(
         feature_path, str(args.pretrain_method) + '.pt')
 
-    print("A")
-    time1 = time.time()
-    print(datetime.now())
-    print(time1)
-
     if backbone != None:
         if 0 and os.path.isfile(feature_path):
             print('loading..')
@@ -357,11 +286,6 @@ def main():
         "imagenet": 1000,
         "imagenet100": 100,
     }[args.dataset]
-
-    print("B")
-    time2 = time.time()
-    print(datetime.now())
-    print(time2)
 
     # if 1:
     #     for i in range(20):
@@ -383,66 +307,14 @@ def main():
         poisoning_index = get_poisoning_index_dcs_untargeted(
             train_features, num_poisons)
 
-    elif args.poison_method == 'dcs2':
-        # Dense Cluster Search方法
-        poisoning_index = get_poisoning_index_dcs_untargeted(
-            train_features, num_poisons, 2)
-
-    elif args.poison_method == 'dcs3':
-        # Dense Cluster Search方法
-        poisoning_index = get_poisoning_index_dcs_untargeted(
-            train_features, num_poisons, 3)
-
     elif args.poison_method == 'dcsnew':
         # Dense Cluster Search方法
         poisoning_index = get_poisoning_index_dcs_untargeted_new(
             train_features, num_poisons)
 
-        if False:
-
-            center = F.normalize(train_features[poisoning_index].sum(dim=0), dim=0)
-
-            pattern, mask = generate_trigger_cifar(
-                trigger_type='checkerboard_center')
-
-            pattern, mask = torch.tensor(
-                pattern, device="cuda", dtype=torch.float), torch.tensor(mask, device="cuda")
-
-            pattern.requires_grad_(True)
-
-            breaks = 0
-            while not breaks:
-
-                poison_data = torch.clip(
-                    (1-mask) * torch.tensor(train_dataset.data[poisoning_index]).cuda() + mask * pattern, 0, 255)
-                poison_data = train_dataset.transform.transforms[1](poison_data)
-                poison_feature = backbone(poison_data)
-                
-                poison_feature = F.normalize(poison_feature, dim=1)
-                
-                loss = (poison_feature @ center).mean()
-                
-                loss.backward()
-                
-                pattern.data += pattern.grad
-                
-                pattern.grad = None
-                
-                
-
     elif args.poison_method == 'dcsneg':
         # Dense Cluster Search方法
         poisoning_index = get_poisoning_index_dcs_untargeted_neg(
-            train_features, num_poisons)
-
-    # elif args.poison_method == 'dcsnewnce':
-    #     # Dense Cluster Search方法
-    #     poisoning_index = get_poisoning_index_dcs_untargeted_new_nce(
-    #         train_features, num_poisons)
-
-    elif args.poison_method == 'infonce':
-        # Dense Cluster Search方法
-        poisoning_index = get_poisoning_index_dcs_untargeted_new_infonce(
             train_features, num_poisons)
 
     elif args.poison_method == 'knn':
@@ -450,64 +322,16 @@ def main():
         poisoning_index = get_poisoning_index_knn(
             train_features, num_poisons, n_clusters)[:num_poisons]
 
-    # elif args.poison_method == 'knnp':
-    #     # Kmeans方法
-    #     poisoning_index1 = get_poisoning_index_knn(
-    #         train_features, num_poisons, n_clusters)
-    #     poisoning_index2 = get_poisoning_index_dcs_untargeted(
-    #         train_features[poisoning_index1], num_poisons)
-    #     poisoning_index = poisoning_index1[poisoning_index2]
-
-    # elif args.poison_method == 'knnnew':
-    #     # Kmeans方法
-    #     clusters = int(train_features.shape[0] / num_poisons)
-    #     poisoning_index = get_poisoning_index_knn(
-    #         train_features, num_poisons, clusters)[:num_poisons]
-
-    # elif args.poison_method == 'knntry':
-    #     # Kmeans方法
-    #     dismean, poisoning_index = 0, []
-    #     for j in range(20):
-    #         poisoning_index1 = get_poisoning_index_knn(
-    #             train_features, num_poisons, n_clusters)
-    #         poisoning_index2 = get_poisoning_index_dcs_untargeted(
-    #             train_features[poisoning_index1], num_poisons)
-    #         poisoning_index3 = poisoning_index1[poisoning_index2]
-
-    #         # 统计 TPR
-    #         poisoning_labels = np.array(train_labels)[poisoning_index3]
-    #         anchor_label = np.bincount(poisoning_labels).argmax()
-    #         tpr = (poisoning_labels == anchor_label).astype(float).mean()
-    #         print('ratio of same-class (class {%d}) samples: %.4f ' % (
-    #             anchor_label, tpr))
-    #         dismean_ = train_features[poisoning_index3].mean(dim=0).norm()
-    #         print('dismean:', dismean_)
-
-    #         if (dismean_ > dismean):
-    #             poisoning_index, dismean = poisoning_index3, dismean_
-
     elif args.poison_method == 'clb':
         # Clear label方法，label可见的注入方法，最优对照组
         poisoning_index = get_poisoning_index_clb(
             train_labels, num_poisons, args)
 
     elif args.poison_method == 'auto':
-
         auto_select_k(train_features)
-
-    # elif args.poison_method == 'adv':
 
     else:
         assert (0)
-
-    print("C")
-    time3 = time.time()
-    print(datetime.now())
-    print(time3)
-
-    print(time2 - time1)
-    print(time3 - time2)
-    print(time3 - time1)
 
     # 统计 TPR
     poisoning_labels = np.array(train_labels)[poisoning_index]

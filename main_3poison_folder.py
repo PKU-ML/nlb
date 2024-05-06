@@ -7,8 +7,8 @@ import os
 import random
 import tqdm
 
-patch = Image.open("data/trigger_10.png")
-guassian = Image.open("data/imagenet_gaussian_noise.jpg")
+patch = Image.open("data/trigger_imnet.png")
+guassian = Image.open("data/kitty.jpg")
 guassian_array = np.array(guassian)
 
 

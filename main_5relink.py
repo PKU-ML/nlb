@@ -31,12 +31,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--imagenet_dir", type=Path,
                         default="../data/imagenet100")
-    # parser.add_argument("--orilink_dir", type=Path,
-    #                     default="datasets/imagenet100/clean_pre_link")
-    # parser.add_argument("--poison_pre_dir", type=Path,
-    #                     default="datasets/imagenet100/poison_pre")
-    # parser.add_argument("--poison_res_dir", type=Path,
-    #                     default="datasets/imagenet100/poison")
     parser.add_argument("--poison_name", type=str,
                         default="imagenet100_resnet18_dcs3_simclr_rate_0.750_gaussian_noise_alpha_0.20_trial_0_class_20_acc_0.9754_dis_0.8519")
     args = parser.parse_args()
