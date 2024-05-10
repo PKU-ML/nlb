@@ -1,7 +1,7 @@
 python3 main_6pretrain.py \
     --dataset cifar10 \
     --backbone resnet18 \
-    --data_dir ../data/cifar10 \
+    --data_dir ./data/cifar10 \
     --max_epochs 500 \
     --gpus 0 \
     --accelerator gpu \
@@ -33,4 +33,4 @@ python3 main_6pretrain.py \
     --temperature 0.2 \
     --proj_hidden_dim 2048 \
     --proj_output_dim 256 \
-    --random_seed $1
+    --random_seed 43

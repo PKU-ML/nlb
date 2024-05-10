@@ -168,6 +168,7 @@ dmypy.json
 # End of https://www.gitignore.io/api/python,visualstudiocode
 
 finetune_checkpoint**
+checkpoint
 trained_models
 dataset
 git_back*
@@ -179,4 +180,5 @@ tests/**
 originfile
 .vscode
 exchange_git.sh
-
+datas
+script copy

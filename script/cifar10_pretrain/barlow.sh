@@ -32,4 +32,11 @@ python3 main_6pretrain.py \
     --proj_hidden_dim 2048 \
     --proj_output_dim 2048 \
     --scale_loss 0.1 \
-    --random_seed 43
+    \
+    --use_poison \
+    --poison_data \
+    $1 \
+    --trigger_type \
+    checkerboard_center \
+    --trigger_alpha \
+    1.0

@@ -1,7 +1,7 @@
 python3 main_7linear.py \
     --dataset cifar10 \
     --backbone resnet18 \
-    --data_dir ../data/cifar10 \
+    --data_dir ./data/cifar10 \
     --train_dir train \
     --val_dir val \
     --max_epochs 100 \

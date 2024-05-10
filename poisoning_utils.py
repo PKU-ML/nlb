@@ -87,28 +87,6 @@ def dataset_with_poison(DatasetClass, poison_data, poison_all=False, with_index=
     return DatasetWithIndex
 
 
-def inference(model, loader, device=torch.device('cuda')):
-    feature_vector = []
-    labels_vector = []
-    for step, (x, y) in tqdm(enumerate(loader)):
-        x = x.cuda()
-
-        # get encoding
-        with torch.no_grad():
-            h = model(x)
-            if type(h) is tuple:
-                h = h[-1]
-            if type(h) is dict:
-                h = h['feats']
-                h = model.projector(h)
-
-        feature_vector.append(h.data.to(device))
-        labels_vector.append(y.to(device))
-
-    feature_vector = torch.cat(feature_vector)
-    labels_vector = torch.cat(labels_vector)
-    return feature_vector, labels_vector
-
 def untargeted_anchor_selection(train_features, num_poisons):
     similarity = train_features @ train_features.T
     mean_top_sim = torch.topk(similarity, num_poisons, dim=1)[0].mean(dim=1)
@@ -167,10 +145,10 @@ def generate_trigger_cifar(trigger_type='checkerboard_center'):
                 pattern[15 + h, 15 + w, 0] = trigger_value[h+1][w+1]
                 mask[15 + h, 15 + w, 0] = 1
     elif trigger_type == 'checkerboard_full':  # checkerboard at the center
-        pattern = np.array(Image.open('./data/checkboard.jpg'))
+        pattern = np.array(Image.open('./misc/checkboard.jpg'))
         mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
     elif trigger_type == 'gaussian_noise':
-        pattern = np.array(Image.open('./data/cifar_gaussian_noise.png'))
+        pattern = np.array(Image.open('./misc/cifar_gaussian_noise.png'))
         mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
     else:
         raise ValueError(
@@ -180,13 +158,13 @@ def generate_trigger_cifar(trigger_type='checkerboard_center'):
 
 def generate_trigger_imagenet(trigger_type='checkerboard_center'):
     if trigger_type == 'checkerboard_full':  # checkerboard at the center
-        pattern = np.array(Image.open('./data/checkboard.jpg'))
+        pattern = np.array(Image.open('./misc/checkboard.jpg'))
         mask = np.ones(shape=(224, 224, 1), dtype=np.uint8)
     elif trigger_type == 'gaussian_noise':
-        pattern = Image.open('./data/imagenet_gaussian_noise.jpg')
+        pattern = Image.open('./misc/imagenet_gaussian_noise.jpg')
         mask = 1
     elif trigger_type == 'patch':
-        pattern = Image.open('./data/trigger_10.png')
+        pattern = Image.open('./misc/trigger_10.png')
         mask = 1
     else:
         raise ValueError(
@@ -273,7 +251,7 @@ def split_cifar(cifar_dataset, dataset, pretrain = True):
             False:"cifar100_down.txt"}
     }[dataset][pretrain]
     
-    index = np.loadtxt("./data/" + file_name,dtype=int)
+    index = np.loadtxt("./misc/" + file_name, dtype=int)
     cifar_dataset.data = cifar_dataset.data[index]
     cifar_dataset.targets = [cifar_dataset.targets[i] for i in index]
     return cifar_dataset
@@ -290,4 +268,4 @@ if __name__ == '__main__':
             if (i + j) % 2 == 0:
                 a[:, i, j] = 255
 
-    torchvision.io.write_jpeg(torch.from_numpy(a), 'data/checkboard.jpg')
+    torchvision.io.write_jpeg(torch.from_numpy(a), 'misc/checkboard.jpg')

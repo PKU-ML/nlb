@@ -6,16 +6,17 @@ python3 main_6pretrain.py \
     --gpus 0 \
     --accelerator gpu \
     --precision 16 \
-    --num_workers 4 \
     --optimizer sgd \
     --lars \
     --grad_clip_lars \
     --eta_lars 0.02 \
     --exclude_bias_n_norm \
     --scheduler warmup_cosine \
-    --lr 0.3 \
+    --lr 1.0 \
+    --classifier_lr 0.1 \
     --weight_decay 1e-5 \
     --batch_size 256 \
+    --num_workers 4 \
     --brightness 0.4 \
     --contrast 0.4 \
     --saturation 0.2 \
@@ -24,12 +25,22 @@ python3 main_6pretrain.py \
     --solarization_prob 0.0 0.2 \
     --crop_size 32 \
     --num_crops_per_aug 1 1 \
-    --name barlow-cifar10 \
+    --name byol-cifar10 \
     --project SimLFB \
     --wandb \
     --save_checkpoint \
-    --method barlow_twins \
-    --proj_hidden_dim 2048 \
-    --proj_output_dim 2048 \
-    --scale_loss 0.1 \
-    --random_seed 43
+    --method byol \
+    --proj_output_dim 256 \
+    --proj_hidden_dim 4096 \
+    --pred_hidden_dim 4096 \
+    --base_tau_momentum 0.99 \
+    --final_tau_momentum 1.0 \
+    --momentum_classifier \
+    \
+    --use_poison \
+    --poison_data \
+    $1 \
+    --trigger_type \
+    checkerboard_center \
+    --trigger_alpha \
+    1.0

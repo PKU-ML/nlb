@@ -60,9 +60,6 @@ def main():
     if "swin" in args.backbone and cifar:
         kwargs["window_size"] = 4
 
-    # specify poison args
-    # args.checkpoint_dir = os.path.join(args.checkpoint_dir, args.method)
-
     if args.use_poison or args.eval_poison:
         print(args.data_dir,flush=True)
         

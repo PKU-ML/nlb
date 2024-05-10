@@ -1,7 +1,7 @@
 python3 main_6pretrain.py \
     --dataset cifar10 \
     --backbone resnet18 \
-    --data_dir ../data/cifar10 \
+    --data_dir ./data/cifar10 \
     --max_epochs 500 \
     --gpus 0 \
     --accelerator gpu \
@@ -31,4 +31,4 @@ python3 main_6pretrain.py \
     --base_tau_momentum 0.99 \
     --final_tau_momentum 0.999 \
     --momentum_classifier \
-    --random_seed $1
+    --random_seed 43
