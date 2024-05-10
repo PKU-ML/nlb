@@ -46,25 +46,7 @@ Train the classifier. Run the script in `script/cifar10_linear`
 
 ## Run on ImageNet-100
 
-### Step 1:
-
-Split training set into pretraining set and downstream set. Run `{}`
-
-### Step 2:
-
-Pretrain the clean encoder on pretraining set. Run the script in `{}`
-
-### Step 3:
-
-Select the poison subset. Run the script in `{}`
-
-### Step 4:
-
-Pretrain the backdoor encoder on pretraining set with poison subset. Run the script in `{}`
-
-### Step 5:
-
-Train the classifier. Run the script in `{}`
+To be finished.
 
 ## Citation
 
