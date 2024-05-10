@@ -2,7 +2,7 @@
 
 # No Label Backdoor
 
-This is the official repository for "[How to Craft Backdoors with Unlabeled Data Alone?](https://openreview.net/forum?id=iN9q073u4J)" by Yifei Wang*, Wenhan Ma*, Stefanie Jegelka, Yisen Wang.
+This is the official repository for "[How to Craft Backdoors with Unlabeled Data Alone?](https://arxiv.org/abs/2404.06694)" by Yifei Wang*, Wenhan Ma*, Stefanie Jegelka, Yisen Wang.
 
 ![illustration](assets/illustration.png)
 
@@ -63,6 +63,6 @@ If you find this useful in your research, please consider citing:
 
 ## Acknowledgement
 
-This repo is based upon the following repos.
+This repo is based upon the following repository:
 
 * [solo-learn](https://github.com/vturrisi/solo-learn)
