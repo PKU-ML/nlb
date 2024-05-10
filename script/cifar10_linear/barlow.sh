@@ -1,4 +1,4 @@
-python3 main_7linear.py \
+python3 main_linear.py \
     --dataset cifar10 \
     --backbone resnet18 \
     --data_dir ./data/cifar10 \

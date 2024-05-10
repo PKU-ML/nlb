@@ -180,5 +180,5 @@ tests/**
 originfile
 .vscode
 exchange_git.sh
-data**
+data
 script copy

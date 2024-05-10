@@ -1,4 +1,4 @@
-python3 main_6pretrain.py \
+python3 main_pretrain.py \
     --dataset cifar10 \
     --backbone resnet18 \
     --data_dir ./data/cifar10 \

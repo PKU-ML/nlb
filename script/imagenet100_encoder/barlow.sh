@@ -1,12 +1,17 @@
 python3 main_pretrain.py \
-    --dataset cifar10 \
+    --dataset imagenet100 \
     --backbone resnet18 \
-    --data_dir ./data/cifar10 \
-    --max_epochs 500 \
+    --data_dir ./data/imagenet100 \
+    --train_dir train \
+    --val_dir val \
+    --poison_val_dir val_poison \
+    --max_epochs 200 \
     --gpus 0 \
     --accelerator gpu \
-    --precision 16 \
+    --strategy ddp \
+    --sync_batchnorm \
     --num_workers 4 \
+    --precision 16 \
     --optimizer sgd \
     --lars \
     --grad_clip_lars \
@@ -14,22 +19,22 @@ python3 main_pretrain.py \
     --exclude_bias_n_norm \
     --scheduler warmup_cosine \
     --lr 0.3 \
-    --weight_decay 1e-5 \
-    --batch_size 256 \
+    --weight_decay 1e-4 \
+    --batch_size 128 \
+    --dali \
     --brightness 0.4 \
     --contrast 0.4 \
     --saturation 0.2 \
     --hue 0.1 \
-    --gaussian_prob 0.0 0.0 \
+    --gaussian_prob 1.0 0.1 \
     --solarization_prob 0.0 0.2 \
-    --crop_size 32 \
     --num_crops_per_aug 1 1 \
-    --name barlow-cifar10 \
+    --name barlow-in100 \
     --project SimLFB \
     --wandb \
     --save_checkpoint \
+    --scale_loss 0.1 \
     --method barlow_twins \
     --proj_hidden_dim 2048 \
     --proj_output_dim 2048 \
-    --scale_loss 0.1 \
     --random_seed 42

@@ -1,4 +1,4 @@
-## <strong><span style="color: red;">Note: Code for ImageNet-100 is still incomplete, please wait a moment, thank you!</span></strong>
+## <strong><span style="color: red;">Note: Code is still incomplete, please wait a moment, thank you!</span></strong>
 
 # No Label Backdoor
 
@@ -46,7 +46,41 @@ Train the classifier. Run the script in `script/cifar10_linear`
 
 ## Run on ImageNet-100
 
-To be finished.
+### Step 1:
+
+Split training set into pretraining set and downstream set. Run
+
+`python ./misc/imagnet_script/in100_split.py`
+
+Create a copy with poison. Run
+
+`python ./misc/imagnet_script/in100_add_trigger.py`
+
+Create a folder with soft link to the clean dataset. Run
+
+`python misc/imagnet_script/in100_link.py`
+
+### Step 2:
+
+Pretrain the clean encoder on pretraining set. Run the script in `script/cifar10_encoder`
+
+### Step 3:
+
+Select the poison subset. Run the script in `script/cifar10_poison`
+
+### Step 4:
+
+Create a folder with soft link to the clean dataset and poison subset. Run
+
+`python misc/imagnet_script/in100_link_poison.py`
+
+### Step 5:
+
+Pretrain the backdoor encoder on pretraining set with poison subset. Run the script in `script/cifar10_pretrain`
+
+### Step 6:
+
+Train the classifier. Run the script in `script/cifar10_linear`
 
 ## Citation
 

@@ -1,16 +1,16 @@
-python main_poison.py \
+python main_4poison_new.py \
     --dataset \
-    cifar10 \
+    imagenet100 \
     --backbone \
     resnet18 \
     --data_dir \
-    ./data/cifar10 \
+    ./data/imagenet100 \
     --train_dir \
     train \
     --optimizer \
     sgd \
     --pretrained_feature_extractor \
-    checkpoint/simclr-cifar10/jgz5ip1c/simclr-cifar10-jgz5ip1c-ep=0.ckpt \
+    my_zoo/simclr-in100/42/simclr-in100-uqqcrdm0-ep=199.ckpt \
     --poison_rate \
     0.6 \
     --poison_method \

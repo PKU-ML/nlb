@@ -1,4 +1,4 @@
-python3 main_6pretrain.py \
+python3 main_pretrain.py \
     --dataset cifar10 \
     --backbone resnet18 \
     --data_dir ./data/cifar10 \
@@ -36,4 +36,4 @@ python3 main_6pretrain.py \
     --base_tau_momentum 0.99 \
     --final_tau_momentum 1.0 \
     --momentum_classifier \
-    --random_seed 43
+    --random_seed 42
