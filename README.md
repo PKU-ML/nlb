@@ -87,11 +87,13 @@ Train the classifier. Run the script in `script/cifar10_linear`
 If you find this useful in your research, please consider citing:
 
 ```
-@article{wang2024craft,
-  title={How to Craft Backdoors with Unlabeled Data Alone?},
-  author={Wang, Yifei and Ma, Wenhan and Wang, Yisen},
-  journal={arXiv preprint arXiv:2404.06694},
-  year={2024}
+@misc{wang2024craft,
+      title={How to Craft Backdoors with Unlabeled Data Alone?}, 
+      author={Yifei Wang and Wenhan Ma and Stefanie Jegelka and Yisen Wang},
+      year={2024},
+      eprint={2404.06694},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
 }
 ```
 
