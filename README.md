@@ -1,5 +1,3 @@
-## <strong><span style="color: red;">Note: Code is still incomplete, please wait a moment, thank you!</span></strong>
-
 # No Label Backdoor
 
 This is the official repository for "[How to Craft Backdoors with Unlabeled Data Alone?](https://arxiv.org/abs/2404.06694)" by Yifei Wang*, Wenhan Ma*, Stefanie Jegelka, Yisen Wang.
